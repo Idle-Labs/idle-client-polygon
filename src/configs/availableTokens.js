@@ -14,6 +14,99 @@ import IdleTokenV4 from '../contracts/IdleTokenV4.json';
 import IdleConverterPersonalSignV4 from '../contracts/IdleConverterPersonalSignV4.json';
 
 const availableTokens = {
+  // Matic
+  80001:{ // Mumbai-Testnet
+    best:{
+      DAI:{
+        abi:DAI,
+        token:'DAI',
+        decimals:18,
+        enabled:true,
+        govTokensDisabled:false,
+        color:'hsl(40, 95%, 59%)',
+        address:'0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        deposit:{
+          minAmountForMint:10000,
+        },
+        wyre:{
+          destCurrency:'DAI'
+        },
+        ramp:{
+          swapAsset:'DAI'
+        },
+        defiPrime:{
+          token:'dai'
+        },
+        idle:{
+          abi:IdleTokenV4,
+          token:'idleDAIYield',
+          address:'0x295CA5bC5153698162dDbcE5dF50E436a58BA21e',
+        },
+        protocols:[
+          {
+            decimals:28,
+            token:'cDAI',
+            enabled:true,
+            abi:cToken.abi,
+            name:'compound',
+            address:'0xf0d0eb522cfa50b716b3b1604c4f0fa6f04376ad',
+            functions:{
+              exchangeRate:{
+                name:'exchangeRateStored',
+                params:[]
+              }
+            },
+          }
+        ]
+      },
+      USDC:{
+        abi:USDC,
+        token:'USDC',
+        decimals:6,
+        enabled:true,
+        govTokensDisabled:false,
+        color:'hsl(40, 95%, 59%)',
+        address:'0xb7a4f3e9097c08da09517b5ab877f7a917224ede',
+        deposit:{
+          minAmountForMint:10000,
+        },
+        wyre:{
+          destCurrency:'USDC'
+        },
+        ramp:{
+          swapAsset:'USDC'
+        },
+        defiPrime:{
+          token:'usdc'
+        },
+        idle:{
+          abi:IdleTokenV4,
+          token:'idleUSDCYield',
+          address:'0x0de23D3bc385a74E2196cfE827C8a640B8774B9f',
+        },
+        protocols:[
+          {
+            decimals:16,
+            enabled:true,
+            token:'cUSDC',
+            abi:cToken.abi,
+            name:'compound',
+            address:'0x4a92e71227d294f041bd82dd8f78591b75140d63',
+            functions:{
+              exchangeRate:{
+                name:'exchangeRateStored',
+                params:[]
+              }
+            },
+          }
+        ]
+      },
+    },
+    risk:{
+      
+    }
+  },
+  // Ethereum
   42:{
     best:{
       DAI:{

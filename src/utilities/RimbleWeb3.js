@@ -704,7 +704,7 @@ class RimbleTransaction extends React.Component {
           this.state.web3SocketProvider.clearSubscriptions();
         }
 
-        const networkName = globalConfigs.network.availableNetworks[globalConfigs.network.requiredNetwork].toLowerCase();
+        const networkName = globalConfigs.network.availableNetworks[globalConfigs.network.requiredNetwork].name.toLowerCase();
         const web3SocketProvider = new Web3(new Web3.providers.WebsocketProvider(`wss://${networkName}.infura.io/ws/v3/${INFURA_KEY}`));
 
         // Subscribe to logs
@@ -1172,7 +1172,7 @@ class RimbleTransaction extends React.Component {
         ? this.props.config.requiredNetwork
         : globalConfigs.network.requiredNetwork;
 
-    let networkName = globalConfigs.network.availableNetworks[networkId] ? globalConfigs.network.availableNetworks[networkId] : 'unknown';
+    let networkName = globalConfigs.network.availableNetworks[networkId] ? globalConfigs.network.availableNetworks[networkId].name : 'unknown';
 
     let requiredNetwork = {
       name: networkName,
@@ -1187,9 +1187,10 @@ class RimbleTransaction extends React.Component {
 
   getNetworkId = async () => {
     try {
-      return this.state.web3.eth.net.getId((error, networkId) => {
+      return this.state.web3.eth.net.getId(async (error, networkId) => {
         let current = { ...this.state.network.current };
         current.id = networkId;
+        current.name = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'name']) || await this.state.web3.eth.net.getNetworkType();
         let network = Object.assign({},this.state.network);
         network.current = current;
         network.isCorrectNetwork = globalConfigs.network.enabledNetworks.includes(networkId);
@@ -1217,10 +1218,11 @@ class RimbleTransaction extends React.Component {
   checkNetwork = async () => {
     this.getRequiredNetwork();
 
-    await Promise.all([
-      this.getNetworkId(),
-      this.getNetworkName()
-    ]);
+    // await Promise.all([
+    //   this.getNetworkId(),
+    //   this.getNetworkName()
+    // ]);
+    await this.getNetworkId();
 
     let network = Object.assign({},this.state.network);
     network.isCorrectNetwork = !this.state.network.current.id || globalConfigs.network.enabledNetworks.includes(this.state.network.current.id);

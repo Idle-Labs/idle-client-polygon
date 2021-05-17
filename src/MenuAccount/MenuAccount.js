@@ -8,6 +8,7 @@ import DashboardCard from '../DashboardCard/DashboardCard';
 import Notifications from '../Notifications/Notifications';
 import CardIconButton from '../CardIconButton/CardIconButton';
 import AccountModal from "../utilities/components/AccountModal";
+import NetworkIndicator from '../NetworkIndicator/NetworkIndicator';
 
 class MenuAccount extends Component {
 
@@ -97,6 +98,17 @@ class MenuAccount extends Component {
             width={[1,'fit-content']}
             justifyContent={'space-between'}
           >
+            <Flex
+              mr={2}
+              width={'fit-content'}
+              alignItems={'center'}
+              flexDirection={'row'}
+              justifyContent={'space-between'}
+            >
+              <NetworkIndicator
+                {...this.props}
+              />
+            </Flex>
             <DashboardCard
               {...this.props}
               cardProps={{
@@ -145,10 +157,11 @@ class MenuAccount extends Component {
               </Flex>
             </DashboardCard>
             {
-              this.props.isMobile &&
+              this.props.isMobile && (
                 <Notifications
                   {...this.props}
                 />
+              )
             }
           </Flex>
           <Flex

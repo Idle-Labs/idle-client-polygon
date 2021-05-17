@@ -1864,7 +1864,7 @@ class FunctionsUtil {
       if (googleEventsInfo.addPostfixForTestnet){
         // Postfix network name if not mainnet
         if (globalConfigs.network.requiredNetwork !== 1){
-          const currentNetwork = globalConfigs.network.availableNetworks[globalConfigs.network.requiredNetwork];
+          const currentNetwork = globalConfigs.network.availableNetworks[globalConfigs.network.requiredNetwork].name;
           eventData.eventCategory += `_${currentNetwork}`;
         // Postfix test for debug
         } else if (debugEnabled && !originOk) {

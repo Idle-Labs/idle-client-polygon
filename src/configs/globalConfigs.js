@@ -1017,11 +1017,34 @@ const globalConfigs = {
   },
   network:{ // Network configurations
     availableNetworks:{
-      1:'Mainnet',
-      3:'Ropsten',
-      4:'Rinkeby',
-      42:'Kovan',
-      1337:'Hardhat'
+      1:{
+        name:'Mainnet',
+        baseToken:'ETH'
+      },
+      42:{
+        name:'Kovan',
+        baseToken:'ETH'
+      },
+      3:{
+        name:'Ropsten',
+        baseToken:'ETH'
+      },
+      4:{
+        name:'Rinkeby',
+        baseToken:'ETH'
+      },
+      137:{
+        name:'Matic',
+        baseToken:'MATIC'
+      },
+      1337:{
+        name:'Hardhat',
+        baseToken:'ETH'
+      },
+      80001:{
+        name:'Mumbai',
+        baseToken:'MATIC'
+      }
     },
     isForked:false, // If TRUE the tx confirmation callback is fired on the receipt
     requiredNetwork:1, // { 1: Mainnet, 3: Ropsten, 42: Kovan }
@@ -1029,8 +1052,8 @@ const globalConfigs = {
     secondsPerYear:31536000,
     firstBlockNumber:8119247,
     requiredConfirmations: 1,
-    enabledNetworks:[1,42,1337],
     accountBalanceMinimum: 0, // in ETH for gas fees
+    enabledNetworks:[1,42,1337,137,80001],
     providers:{
       infura:{
         42: 'https://kovan.infura.io/v3/',
@@ -1098,7 +1121,7 @@ const globalConfigs = {
               networkName = 'mainnet';
             break;
             default:
-              networkName = availableNetworks[networkId] ? availableNetworks[networkId].toLowerCase() : 'mainnet';
+              networkName = availableNetworks[networkId] ? availableNetworks[networkId].name.toLowerCase() : 'mainnet';
             break;
           }
           return networkName;
