@@ -14,7 +14,15 @@ import IdleTokenV4 from '../contracts/IdleTokenV4.json';
 import IdleConverterPersonalSignV4 from '../contracts/IdleConverterPersonalSignV4.json';
 
 const availableTokens = {
-  // Matic
+  // Goerli
+  5:{
+    best:{
+
+    },
+    risk:{
+
+    }
+  },
   80001:{ // Mumbai-Testnet
     best:{
       DAI:{
@@ -24,7 +32,7 @@ const availableTokens = {
         enabled:true,
         govTokensDisabled:false,
         color:'hsl(40, 95%, 59%)',
-        address:'0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        address:'0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F',
         deposit:{
           minAmountForMint:10000,
         },
@@ -40,25 +48,23 @@ const availableTokens = {
         idle:{
           abi:IdleTokenV4,
           token:'idleDAIYield',
-          address:'0x295CA5bC5153698162dDbcE5dF50E436a58BA21e',
+          address:'0x45da93199005cBf37DB9374d4Fc74B2ef87f7217',
         },
         protocols:[
           {
-            decimals:28,
-            token:'cDAI',
+            abi:aToken,
+            name:'aave',
             enabled:true,
-            abi:cToken.abi,
-            name:'compound',
-            address:'0xf0d0eb522cfa50b716b3b1604c4f0fa6f04376ad',
+            token:'amDAI',
+            address:'0x639cB7b21ee2161DF9c882483C9D55c90c20Ca3e',
+            decimals:18,
             functions:{
-              exchangeRate:{
-                name:'exchangeRateStored',
-                params:[]
-              }
-            },
-          }
+
+            }
+          },
         ]
       },
+      /*
       USDC:{
         abi:USDC,
         token:'USDC',
@@ -101,6 +107,7 @@ const availableTokens = {
           }
         ]
       },
+      */
     },
     risk:{
       

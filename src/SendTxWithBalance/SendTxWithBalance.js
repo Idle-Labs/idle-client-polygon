@@ -223,7 +223,7 @@ class SendTxWithBalance extends Component {
     // console.log('executeTx',params);
 
     const callback = (tx,error) => {
-      const txSucceeded = tx.status === 'success';
+      const txSucceeded = tx && tx.status === 'success';
 
       // Send Google Analytics event
       const eventData = {
@@ -277,16 +277,14 @@ class SendTxWithBalance extends Component {
       }));
     };
 
-    const contractName = this.props.contractInfo.name;
-
     let params = null;
 
     // Check contract approved without permit
     const contractApproved = await this.checkContractApproved(false);
 
     const permitEnabled = this.props.permitEnabled && this.state.permitEnabled && !contractApproved;
-    if (permitEnabled){
-      const signedParameters = await this.functionsUtil.signPermit(this.props.tokenConfig.token, this.props.account, contractName);
+    if (permitEnabled && typeof this.props.getPermitTransactionParams === 'function'){
+      const signedParameters = await this.functionsUtil.signPermit(this.props.tokenConfig.token, this.props.account, this.props.contractInfo.name);
       console.log('signedParameters',signedParameters);
       if (signedParameters){
         params = this.props.getPermitTransactionParams(_amount,signedParameters);
@@ -298,10 +296,14 @@ class SendTxWithBalance extends Component {
     if (params){
       let {
         methodName,
-        methodParams
+        methodParams,
+        contractName
       } = params;
 
       const value = params.value || null;
+      contractName = contractName || this.props.contractInfo.name;
+
+      console.log('contractMethodSendWrapper',contractName, methodName, methodParams, value);
 
       this.props.contractMethodSendWrapper(contractName, methodName, methodParams, value, callback, callbackReceipt);
 
@@ -340,9 +342,11 @@ class SendTxWithBalance extends Component {
       return true;
     }
 
-    const contractInfo = await this.props.initContract(this.props.contractInfo.name,this.props.contractInfo.address,this.props.contractInfo.abi);
-    if (contractInfo){
+    await this.props.initContract(this.props.contractInfo.name,this.props.contractInfo.address,this.props.contractInfo.abi);
+
+    if (this.props.contractInfo.address){
       const contractApproved = await this.functionsUtil.checkTokenApproved(this.props.tokenConfig.token,this.props.contractInfo.address,this.props.account);
+      // console.log('contractApproved',this.props.tokenConfig.token,this.props.contractInfo.address,this.props.account,contractApproved);
       return contractApproved;
     }
     

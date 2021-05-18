@@ -636,6 +636,7 @@ class App extends Component {
                         simpleID,
                         biconomy,
                         contracts,
+                        web3Polygon,
                         transaction,
                         initAccount,
                         initContract,
@@ -661,7 +662,8 @@ class App extends Component {
                         userRejectedValidation,
                         accountValidationPending,
                         connectAndValidateAccount,
-                        contractMethodSendWrapper
+                        contractMethodSendWrapper,
+                        initContractCustomProvider
                       }) => {
                         return (
                         <Box>
@@ -686,6 +688,7 @@ class App extends Component {
                                       isMobile={isMobile}
                                       simpleID={simpleID}
                                       contracts={contracts}
+                                      web3Polygon={web3Polygon}
                                       initAccount={initAccount}
                                       permitClient={permitClient}
                                       initSimpleID={initSimpleID}
@@ -734,6 +737,7 @@ class App extends Component {
                                       setCurrentSection={this.setCurrentSection.bind(this)}
                                       connectAndValidateAccount={connectAndValidateAccount}
                                       contractMethodSendWrapper={contractMethodSendWrapper}
+                                      initContractCustomProvider={initContractCustomProvider}
                                       setCallbackAfterLogin={this.setCallbackAfterLogin.bind(this)}
                                     />
                                   </Suspense>

@@ -14,7 +14,6 @@ import TransactionErrorModal from './components/TransactionErrorModal';
 import { TerminalHttpProvider, SourceType } from '@terminal-packages/sdk';
 
 require('dotenv').config();
-const INFURA_KEY = process.env["REACT_APP_INFURA_KEY"];
 
 const RimbleTransactionContext = React.createContext({
   web3: {},
@@ -22,6 +21,7 @@ const RimbleTransactionContext = React.createContext({
   biconomy: {},
   simpleID: {},
   contracts: [],
+  web3Polygon:{},
   web3Infura: {},
   tokenConfig: {},
   transactions: {},
@@ -53,6 +53,7 @@ const RimbleTransactionContext = React.createContext({
   rejectAccountConnect: () => {},
   enableUnderlyingWithdraw: false,
   connectAndValidateAccount: () => {},
+  initContractCustomProvider: () => {},
   modals: {
     data: {
       connectionError: {},
@@ -263,6 +264,9 @@ class RimbleTransaction extends React.Component {
 
     const context = this.props.context;
     const networkId = this.state.network.current.id || this.state.network.required.id;
+    const provider = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'provider']);
+    const web3RpcKey = this.functionsUtil.getGlobalConfig(['network','providers',provider,'key']);
+    const web3Rpc = this.functionsUtil.getGlobalConfig(['network','providers',provider,'rpc',networkId])+web3RpcKey;
 
     if (!networkId){
       return false;
@@ -270,7 +274,9 @@ class RimbleTransaction extends React.Component {
 
     // console.log('initWeb3',this.state.network.current.id,this.state.network.required.id,networkId);
 
-    const web3Infura = new Web3(new Web3.providers.HttpProvider(globalConfigs.network.providers.infura[networkId]+INFURA_KEY));
+    const web3InfuraRpc = this.functionsUtil.getGlobalConfig(['network','providers','infura','rpc',networkId])+this.functionsUtil.getGlobalConfig(['network','providers','infura','key']);
+
+    const web3Infura = new Web3(new Web3.providers.HttpProvider(web3InfuraRpc));
 
     let web3 = context.library;
 
@@ -381,7 +387,7 @@ class RimbleTransaction extends React.Component {
         web3Provider = window.web3;
       } else {
         this.functionsUtil.customLog("Non-Ethereum browser detected. Using Infura fallback.");
-        web3Host = globalConfigs.network.providers.infura[networkId]+INFURA_KEY;
+        web3Host = web3Rpc;
       }
     } else {
       web3Provider = web3.currentProvider;
@@ -394,7 +400,7 @@ class RimbleTransaction extends React.Component {
         await web3Provider.enable();
       } catch (connectionError){
         web3Provider = null;
-        web3Host = globalConfigs.network.providers.infura[networkId]+INFURA_KEY;
+        web3Host = web3Rpc;
         forceCallback = true;
       }
     }
@@ -426,6 +432,14 @@ class RimbleTransaction extends React.Component {
         }
       }
     }
+
+    let web3Polygon = null;
+    const polygonConfig = globalConfigs.network.providers.polygon;
+    if (polygonConfig && polygonConfig.enabled && polygonConfig.rpc && Object.keys(polygonConfig.rpc).includes(this.state.network.current.id)){
+      const web3PolygonHost = polygonConfig.rpc[this.state.network.current.id]+this.functionsUtil.getGlobalConfig(['network','providers','polygon','key']);
+      web3Polygon = new Web3(new Web3.providers.HttpProvider(web3PolygonHost));
+    }
+    window.web3Polygon = web3Polygon;
 
     const web3Callback = async () => {
 
@@ -516,6 +530,7 @@ class RimbleTransaction extends React.Component {
               web3,
               biconomy,
               web3Infura,
+              web3Polygon,
               permitClient,
               erc20ForwarderClient
             };
@@ -532,6 +547,7 @@ class RimbleTransaction extends React.Component {
               this.setState({
                 web3,
                 web3Infura,
+                web3Polygon,
                 biconomy:false
               }, web3Callback);
             }
@@ -540,6 +556,7 @@ class RimbleTransaction extends React.Component {
           this.setState({
             web3,
             web3Infura,
+            web3Polygon,
             biconomy:false
           }, web3Callback);
         }
@@ -549,6 +566,7 @@ class RimbleTransaction extends React.Component {
         this.setState({
           web3,
           web3Infura,
+          web3Polygon,
         }, web3Callback);
       } else if (context.account || forceCallback){
         web3Callback();
@@ -561,6 +579,24 @@ class RimbleTransaction extends React.Component {
   initContract = async (name, address, abi, useInfuraProvider=false) => {
     this.functionsUtil.customLog(`Init contract: ${name}`);
     return await this.createContract(name, address, abi, useInfuraProvider);
+  }
+
+  initContractCustomProvider = async (name, address, abi, web3Provider) => {
+    web3Provider = web3Provider || this.state.web3;
+
+    // Create contract on initialized web3 provider with given abi and address
+    try {
+      const contract = new web3Provider.eth.Contract(abi, address);
+      this.setState(state => ({
+        ...state,
+        contracts: [...state.contracts, {name, contract}]
+      }));
+      return {name, contract};
+    } catch (error) {
+      this.functionsUtil.customLogError("Could not create contract.",name,address,error);
+    }
+
+    return null;
   }
 
   createContract = async (name, address, abi, useInfuraProvider=false) => {
@@ -1768,6 +1804,7 @@ class RimbleTransaction extends React.Component {
     simpleID: null,
     web3Infura:null,
     transactions: {},
+    web3Polygon:null,
     CrispClient: null,
     permitClient:null,
     tokenDecimals:null,
@@ -1794,6 +1831,7 @@ class RimbleTransaction extends React.Component {
     rejectAccountConnect: this.rejectAccountConnect,
     contractMethodSendWrapper: this.contractMethodSendWrapper,
     connectAndValidateAccount: this.connectAndValidateAccount,
+    initContractCustomProvider: this.initContractCustomProvider,
     enableUnderlyingWithdraw: this.props.enableUnderlyingWithdraw,
     network: {
       current: {},

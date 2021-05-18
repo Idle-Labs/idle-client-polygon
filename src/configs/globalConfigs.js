@@ -1,5 +1,7 @@
 import Staking from '../Staking/Staking';
+import DAI from '../abis/tokens/DAI.json';
 import IDLE from '../contracts/IDLE.json';
+import USDC from '../abis/tokens/USDC.json';
 import WETH from '../abis/tokens/WETH.json';
 import COMP from '../abis/compound/COMP.json';
 import aToken from '../abis/aave/AToken.json';
@@ -28,7 +30,10 @@ import StrategyPage from '../StrategyPage/StrategyPage';
 import BuyModal from '../utilities/components/BuyModal';
 import IdleTokenV3 from '../contracts/IdleTokenV3.json';
 import BatchDeposit from '../BatchDeposit/BatchDeposit';
+import ChildERC20 from '../abis/polygon/ChildERC20.json';
+import DummyERC20 from '../abis/polygon/DummyERC20.json';
 import EarlyRewards from '../contracts/EarlyRewards.json';
+import PolygonBridge from '../PolygonBridge/PolygonBridge';
 import CoverProtocol from '../CoverProtocol/CoverProtocol';
 import CurveDeposit from '../abis/curve/CurveDeposit.json';
 import VesterFactory from '../contracts/VesterFactory.json';
@@ -45,8 +50,10 @@ import { RampInstantSDK } from '@ramp-network/ramp-instant-sdk';
 import IdleProxyMinter from '../contracts/IdleProxyMinter.json';
 import IdleRebalancerV3 from '../contracts/IdleRebalancerV3.json';
 import LiquidityGaugeV2 from '../abis/curve/LiquidityGaugeV2.json';
+import RootChainManager from '../abis/polygon/RootChainManager.json';
 import SushiV2Router02 from '../abis/sushiswap/SushiV2Router02.json';
 import IdleBatchConverter from '../contracts/IdleBatchConverter.json';
+import ChildChainManager from '../abis/polygon/ChildChainManager.json';
 import UniswapV2Router02 from '../abis/uniswap/UniswapV2Router02.json';
 import IdleDepositForwarder from '../contracts/IdleDepositForwarder.json';
 import SushiLiquidityPool from '../abis/sushiswap/SushiLiquidityPool.json';
@@ -422,6 +429,16 @@ const globalConfigs = {
     }
   },
   contracts:{
+    RootChainManager:{
+      abi:RootChainManager,
+      address:'0x8829EC24A1BcaCdcF4a3CBDE3A4498172e9FCDcE' // Goerli
+      // address:'0xD4888faB8bd39A663B63161F5eE1Eae31a25B653' // Mainnet
+    },
+    ChildChainManager:{
+      abi:ChildChainManager,
+      address:'0x2e5e27d50EFa501D90Ad3638ff8441a0C0C0d75e' // Mumbai
+      // address:'0x195fe6EE6639665CCeB15BCCeB9980FC445DFa0B' // Matic
+    },
     LockedIDLE:{
       abi:LockedIDLE,
       address:'0xF241a0151841AE2E6ea750D50C5794b5EDC31D99'
@@ -1019,31 +1036,43 @@ const globalConfigs = {
     availableNetworks:{
       1:{
         name:'Mainnet',
-        baseToken:'ETH'
+        baseToken:'ETH',
+        provider:'infura'
       },
       42:{
         name:'Kovan',
-        baseToken:'ETH'
+        baseToken:'ETH',
+        provider:'infura'
       },
       3:{
         name:'Ropsten',
-        baseToken:'ETH'
+        baseToken:'ETH',
+        provider:'infura'
       },
       4:{
         name:'Rinkeby',
-        baseToken:'ETH'
+        baseToken:'ETH',
+        provider:'infura'
       },
       137:{
         name:'Matic',
-        baseToken:'MATIC'
+        baseToken:'MATIC',
+        provider:'polygon'
+      },
+      5:{
+        name:'Goerli',
+        baseToken:'ETH',
+        provider:'infura'
       },
       1337:{
         name:'Hardhat',
-        baseToken:'ETH'
+        baseToken:'ETH',
+        provider:'infura'
       },
       80001:{
         name:'Mumbai',
-        baseToken:'MATIC'
+        baseToken:'MATIC',
+        provider:'polygon'
       }
     },
     isForked:false, // If TRUE the tx confirmation callback is fired on the receipt
@@ -1053,23 +1082,39 @@ const globalConfigs = {
     firstBlockNumber:8119247,
     requiredConfirmations: 1,
     accountBalanceMinimum: 0, // in ETH for gas fees
-    enabledNetworks:[1,42,1337,137,80001],
+    enabledNetworks:[1,42,1337,5,137,80001],
     providers:{
       infura:{
-        42: 'https://kovan.infura.io/v3/',
-        1: 'https://mainnet.infura.io/v3/',
-        1337: 'https://mainnet.infura.io/v3/'
+        key:env.REACT_APP_INFURA_KEY,
+        rpc:{
+          5: 'https://goerli.infura.io/v3/',
+          42: 'https://kovan.infura.io/v3/',
+          1: 'https://mainnet.infura.io/v3/',
+          1337: 'https://mainnet.infura.io/v3/'
+        }
+      },
+      polygon:{
+        enabled:true,
+        key:env.REACT_APP_POLYGON_KEY,
+        rpc:{
+          1:'https://rpc-mainnet.maticvigil.com/v1/',
+          5:'https://rpc-mumbai.maticvigil.com/v1/',
+          137:'https://rpc-mainnet.maticvigil.com/v1/',
+          80001:'https://rpc-mumbai.maticvigil.com/v1/'
+        }
       },
       etherscan:{
         enabled:true, // False for empty txs list (try new wallet)
         endpoints:{
           1: 'https://api.etherscan.io/api',
           1337: 'https://api.etherscan.io/api',
+          5: 'https://api-goerli.etherscan.io/api',
           42: 'https://api-kovan.etherscan.io/api'
         },
         baseUrl:{
           1: 'https://etherscan.io',
           1337: 'https://etherscan.io',
+          5: 'https://goerli.etherscan.io',
           42: 'https://kovan.etherscan.io',
         }
       },
@@ -1149,6 +1194,78 @@ const globalConfigs = {
     }
   ],
   tools:{
+    polygonBridge:{
+      enabled:true,
+      route:'polygon-bridge',
+      label:'Polygon L2 Bridge',
+      subComponent:PolygonBridge,
+      image:'images/protocols/polygon.svg',
+      desc:'Deposit and Withdraw your tokens from Matic L2 network with PoS Bridge.',
+      props:{
+        contracts:{
+          ERC20Predicate:{
+            abi:null,
+            name:'ERC20Predicate',
+            address:'0x033a0A06dc6e78a518003C81B64f9CA80A55cb06', // Goerli
+            // address:'0x886e02327cAd4E1E29688C7Db0c9d28879ac44Da' // Mainnet
+          }
+        },
+        availableTokens:{
+          DERC20:{
+            decimals:18,
+            enabled:true,
+            name:'DERC20',
+            token:'DERC20',
+            rootToken:{
+              name:'DERC20',
+              abi:DummyERC20,
+              address:'0x655F2166b0709cd575202630952D71E2bB0d61Af' // Goerli
+            },
+            childToken:{
+              abi:ChildERC20,
+              name:'DummyERC20',
+              address:'0xfe4F5145f6e09952a5ba9e956ED0C25e3Fa4c7F1' // Mumbai
+            }
+          },
+          DAI:{
+            name:'DAI',
+            token:'DAI',
+            decimals:18,
+            enabled:true,
+            rootToken:{
+              abi:DAI,
+              name:'DAI',
+              address:'0x6311344B50D2077BF9804d376EA4C2cEDcB75C1f', // Goerli
+              // address:'0x6b175474e89094c44da98b954eedeac495271d0f', // Mainnet
+            },
+            childToken:{
+              abi:ChildERC20,
+              name:'childDAI',
+              address:'0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F', // Mumbai
+              // address:'0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063' // Matic
+            }
+          },
+          USDC:{
+            decimals:6,
+            name:'USDC',
+            token:'USDC',
+            enabled:true,
+            rootToken:{
+              abi:USDC,
+              name:'USDC',
+              address:'0x98339D8C260052B7ad81c28c16C0b98420f2B46a' // Goerli
+              // address:'0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // Mainnet
+            },
+            childToken:{
+              abi:ChildERC20,
+              name:'childUSDC',
+              address:'0x6D4dd09982853F08d9966aC3cA4Eb5885F16f2b2' // Mubai
+              // address:'0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' // Matic
+            }
+          }
+        }
+      }
+    },
     ethWrapper:{
       enabled:true,
       label:'ETH Wrapper',
