@@ -1037,41 +1037,49 @@ const globalConfigs = {
       1:{
         name:'Mainnet',
         baseToken:'ETH',
-        provider:'infura'
+        provider:'infura',
+        explorer:'etherscan'
       },
       42:{
         name:'Kovan',
         baseToken:'ETH',
-        provider:'infura'
+        provider:'infura',
+        explorer:'etherscan'
       },
       3:{
         name:'Ropsten',
         baseToken:'ETH',
-        provider:'infura'
+        provider:'infura',
+        explorer:'etherscan'
       },
       4:{
         name:'Rinkeby',
         baseToken:'ETH',
-        provider:'infura'
+        provider:'infura',
+        explorer:'etherscan'
       },
       137:{
         name:'Matic',
         baseToken:'MATIC',
-        provider:'polygon'
+        explorer:'polygon',
+        provider:'polygon',
       },
       5:{
         name:'Goerli',
         baseToken:'ETH',
-        provider:'infura'
+        provider:'infura',
+        explorer:'etherscan'
       },
       1337:{
         name:'Hardhat',
         baseToken:'ETH',
-        provider:'infura'
+        provider:'infura',
+        explorer:'etherscan'
       },
       80001:{
         name:'Mumbai',
         baseToken:'MATIC',
+        explorer:'polygon',
         provider:'polygon'
       }
     },
@@ -1096,6 +1104,10 @@ const globalConfigs = {
       polygon:{
         enabled:true,
         key:env.REACT_APP_POLYGON_KEY,
+        baseUrl:{
+          137:'https://explorer-mainnet.maticvigil.com',
+          80001:'https://explorer-mumbai.maticvigil.com'
+        },
         rpc:{
           1:'https://rpc-mainnet.maticvigil.com/v1/',
           5:'https://rpc-mumbai.maticvigil.com/v1/',

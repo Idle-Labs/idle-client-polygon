@@ -1928,15 +1928,17 @@ class FunctionsUtil {
   getEtherscanTransactionUrl = (txHash) => {
     const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
     const requiredNetwork = this.props.network && this.props.network.current ? this.props.network.current.id || defaultNetwork : defaultNetwork;
+    const explorer = this.getGlobalConfig(['network','availableNetworks',requiredNetwork,'explorer']);
     const defaultUrl = this.getGlobalConfig(['network','providers','etherscan','baseUrl',defaultNetwork]);
-    const baseurl = this.getGlobalConfig(['network','providers','etherscan','baseUrl',requiredNetwork]) || defaultUrl;
+    const baseurl = this.getGlobalConfig(['network','providers',explorer,'baseUrl',requiredNetwork]) || defaultUrl;
     return txHash ? `${baseurl}/tx/${txHash}` : null;
   }
   getEtherscanAddressUrl = (address) => {
     const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
     const requiredNetwork = this.props.network && this.props.network.current ? this.props.network.current.id || defaultNetwork : defaultNetwork;
+    const explorer = this.getGlobalConfig(['network','availableNetworks',requiredNetwork,'explorer']);
     const defaultUrl = this.getGlobalConfig(['network','providers','etherscan','baseUrl',defaultNetwork]);
-    const baseurl = this.getGlobalConfig(['network','providers','etherscan','baseUrl',requiredNetwork]) || defaultUrl;
+    const baseurl = this.getGlobalConfig(['network','providers',explorer,'baseUrl',requiredNetwork]) || defaultUrl;
     return address ? `${baseurl}/address/${address}` : null;
   }
   formatMoney = (amount, decimalCount = 2, decimal = ".", thousands = ",") => {

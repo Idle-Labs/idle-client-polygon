@@ -989,7 +989,7 @@ class DepositRedeem extends Component {
 
             const _referral = this.getReferralAddress() || '0x0000000000000000000000000000000000000000';
             depositParams = [tokensToDeposit, _skipMint, _referral];
-            // console.log('depositParams',depositParams);
+            console.log('depositParams',depositParams);
             contractSendResult = await this.functionsUtil.contractMethodSendWrapper(this.props.tokenConfig.idle.token, 'mintIdleToken', depositParams, callbackDeposit, callbackReceiptDeposit);
           }
         }
