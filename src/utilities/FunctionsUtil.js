@@ -182,7 +182,7 @@ class FunctionsUtil {
 
     const TTL = 3600;
     const provider = this.props.web3.currentProvider;
-    const networkId = this.props.network.current.id;
+    const networkId = this.getCurrentNetworkId();
     if (networkId === 1){
       const ens = new ENS({ provider, ensAddress: getEnsAddress(networkId.toString()) });
       const ensName = await ens.getName(address);
@@ -700,6 +700,18 @@ class FunctionsUtil {
 
     return amountLents;
   }
+  getBaseToken = () => {
+    const networkConfig = this.getCurrentNetwork();
+    return networkConfig ? networkConfig.baseToken : this.getGlobalConfig(['baseToken']);
+  }
+  getCurrentNetwork = () => {
+    const networkId = this.getCurrentNetworkId();
+    return this.getGlobalConfig(['network','availableNetworks',networkId]);
+  }
+  getCurrentNetworkId = () => {
+    const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
+    return this.props.network && this.props.network.current ? this.props.network.current.id || defaultNetwork : defaultNetwork;
+  }
   getEtherscanBaseTxs = async (account=false,firstBlockNumber=0,endBlockNumber='latest',enabledTokens=[],debug=false) => {
     account = account ? account : this.props.account;
 
@@ -715,7 +727,7 @@ class FunctionsUtil {
     const firstIdleBlockNumber = this.getGlobalConfig(['network','firstBlockNumber']);
     firstBlockNumber = Math.max(firstIdleBlockNumber,firstBlockNumber);
 
-    const requiredNetwork = this.props.network.current.id || this.getGlobalConfig(['network','requiredNetwork']);
+    const requiredNetwork = this.getCurrentNetworkId();
     const etherscanInfo = this.getGlobalConfig(['network','providers','etherscan']);
 
     let results = [];
@@ -1406,7 +1418,7 @@ class FunctionsUtil {
 
     etherscanTxs = Object.assign({},etherscanTxs);
 
-    const networkId = this.props.network.current.id || this.getGlobalConfig(['network','requiredNetwork']);
+    const networkId = this.getCurrentNetworkId();
 
     // this.customLog('Processing stored txs',enabledTokens);
 
@@ -1894,9 +1906,10 @@ class FunctionsUtil {
 
     return false;
   }
-  createContract = async (name, address, abi) => {
+  createContract = async (name, address, abi, web3Provider=null) => {
+    web3Provider = web3Provider || this.props.web3;
     try {
-      const contract = new this.props.web3.eth.Contract(abi, address);
+      const contract = new web3Provider.eth.Contract(abi, address);
       return {name, contract};
     } catch (error) {
       this.customLogError("Could not create contract.",name,address,error);
@@ -1927,7 +1940,7 @@ class FunctionsUtil {
   }
   getEtherscanTransactionUrl = (txHash) => {
     const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
-    const requiredNetwork = this.props.network && this.props.network.current ? this.props.network.current.id || defaultNetwork : defaultNetwork;
+    const requiredNetwork = this.getCurrentNetworkId();
     const explorer = this.getGlobalConfig(['network','availableNetworks',requiredNetwork,'explorer']);
     const defaultUrl = this.getGlobalConfig(['network','providers','etherscan','baseUrl',defaultNetwork]);
     const baseurl = this.getGlobalConfig(['network','providers',explorer,'baseUrl',requiredNetwork]) || defaultUrl;
@@ -1935,7 +1948,7 @@ class FunctionsUtil {
   }
   getEtherscanAddressUrl = (address) => {
     const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
-    const requiredNetwork = this.props.network && this.props.network.current ? this.props.network.current.id || defaultNetwork : defaultNetwork;
+    const requiredNetwork = this.getCurrentNetworkId();
     const explorer = this.getGlobalConfig(['network','availableNetworks',requiredNetwork,'explorer']);
     const defaultUrl = this.getGlobalConfig(['network','providers','etherscan','baseUrl',defaultNetwork]);
     const baseurl = this.getGlobalConfig(['network','providers',explorer,'baseUrl',requiredNetwork]) || defaultUrl;
@@ -2430,7 +2443,7 @@ class FunctionsUtil {
 
     try{
       const userAddress = this.props.account;
-      const chainId = this.props.network.current.id || this.getGlobalConfig(['network','requiredNetwork']);
+      const chainId = this.getCurrentNetworkId();
       const messageToSign = this.constructMetaTransactionMessage(nonce, chainId, functionSignature, contract._address);
 
       const signature = await this.props.web3.eth.personal.sign(
@@ -2529,7 +2542,7 @@ class FunctionsUtil {
     try{
       const userAddress = this.props.account;
       const nonce = await contract.methods.getNonce(userAddress).call();
-      const chainId = this.props.network.current.id || this.getGlobalConfig(['network','requiredNetwork']);
+      const chainId = this.getCurrentNetworkId();
       const messageToSign = this.constructMetaTransactionMessage(nonce, chainId, functionSignature, contract._address);
 
       const signature = await this.props.web3.eth.personal.sign(
@@ -3496,7 +3509,7 @@ class FunctionsUtil {
     return activeCoverages;
   }
   getBatchedDepositExecutions = async (contractAddress) => {
-    const requiredNetwork = this.props.network.current.id || this.getGlobalConfig(['network','requiredNetwork']);
+    const requiredNetwork = this.getCurrentNetworkId();
     const etherscanInfo = this.getGlobalConfig(['network','providers','etherscan']);
     if (etherscanInfo.enabled && etherscanInfo.endpoints[requiredNetwork]){
       const etherscanApiUrl = etherscanInfo.endpoints[requiredNetwork];

@@ -238,7 +238,7 @@ class RimbleTransaction extends React.Component {
       await this.initializeContracts();
     }
 
-    const networkChanged = JSON.stringify(prevState.network) !== JSON.stringify(this.state.network);
+    const networkChanged = JSON.stringify(prevState.network) !== JSON.stringify(this.state.network) && this.state.network.current.id;
     // console.log('networkChanged',JSON.stringify(prevState.network),JSON.stringify(this.state.network),networkChanged);
     if (networkChanged){
       this.setState({
@@ -267,10 +267,6 @@ class RimbleTransaction extends React.Component {
     const provider = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'provider']);
     const web3RpcKey = this.functionsUtil.getGlobalConfig(['network','providers',provider,'key']);
     const web3Rpc = this.functionsUtil.getGlobalConfig(['network','providers',provider,'rpc',networkId])+web3RpcKey;
-
-    if (!networkId){
-      return false;
-    }
 
     // console.log('initWeb3',this.state.network.current.id,this.state.network.required.id,networkId);
 
@@ -435,9 +431,11 @@ class RimbleTransaction extends React.Component {
 
     let web3Polygon = null;
     const polygonConfig = globalConfigs.network.providers.polygon;
-    if (polygonConfig && polygonConfig.enabled && polygonConfig.rpc && Object.keys(polygonConfig.rpc).includes(this.state.network.current.id)){
+    // console.log('polygonConfig',polygonConfig,polygonConfig.enabled,this.state.network.current.id,Object.keys(polygonConfig.rpc).includes(parseInt(this.state.network.current.id).toString()));
+    if (polygonConfig && polygonConfig.enabled && polygonConfig.rpc && Object.keys(polygonConfig.rpc).includes(parseInt(this.state.network.current.id).toString())){
       const web3PolygonHost = polygonConfig.rpc[this.state.network.current.id]+this.functionsUtil.getGlobalConfig(['network','providers','polygon','key']);
       web3Polygon = new Web3(new Web3.providers.HttpProvider(web3PolygonHost));
+      // console.log('web3Polygon',web3PolygonHost,web3Polygon);
     }
     window.web3Polygon = web3Polygon;
 
@@ -1210,24 +1208,32 @@ class RimbleTransaction extends React.Component {
 
     let networkName = globalConfigs.network.availableNetworks[networkId] ? globalConfigs.network.availableNetworks[networkId].name : 'unknown';
 
-    let requiredNetwork = {
-      name: networkName,
-      id: networkId
+    return {
+      id: networkId,
+      name: networkName
     };
-
-    let network = Object.assign({},this.state.network);
-    network.required = requiredNetwork;
-
-    this.setState({ network });
   }
 
   getNetworkId = async () => {
+
+    if (!this.state.web3){
+      return {};
+    }
+
+    const networkId = await this.state.web3.eth.net.getId();
+    const networkName = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'name']) || await this.state.web3.eth.net.getNetworkType();
+
+    return {
+      id:networkId,
+      name:networkName
+    }
+    /*
     try {
       return this.state.web3.eth.net.getId(async (error, networkId) => {
         let current = { ...this.state.network.current };
         current.id = networkId;
         current.name = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'name']) || await this.state.web3.eth.net.getNetworkType();
-        let network = Object.assign({},this.state.network);
+        let network = {...this.state.network};
         network.current = current;
         network.isCorrectNetwork = globalConfigs.network.enabledNetworks.includes(networkId);
         this.setState({ network });
@@ -1235,6 +1241,7 @@ class RimbleTransaction extends React.Component {
     } catch (error) {
       this.functionsUtil.customLog("Could not get network ID: ", error);
     }
+    */
   }
 
   getNetworkName = async () => {
@@ -1242,7 +1249,7 @@ class RimbleTransaction extends React.Component {
       return this.state.web3.eth.net.getNetworkType((error, networkName) => {
         let current = { ...this.state.network.current };
         current.name = networkName;
-        let network = Object.assign({},this.state.network);
+        let network = {...this.state.network};
         network.current = current;
         this.setState({ network });
       });
@@ -1252,17 +1259,12 @@ class RimbleTransaction extends React.Component {
   }
 
   checkNetwork = async () => {
-    this.getRequiredNetwork();
+    let network = {...this.state.network};
 
-    // await Promise.all([
-    //   this.getNetworkId(),
-    //   this.getNetworkName()
-    // ]);
-    await this.getNetworkId();
-
-    let network = Object.assign({},this.state.network);
-    network.isCorrectNetwork = !this.state.network.current.id || globalConfigs.network.enabledNetworks.includes(this.state.network.current.id);
-    // console.log('checkNetwork',this.state.network.current.id,network.isCorrectNetwork);
+    network.required = this.getRequiredNetwork();
+    network.current = await this.getNetworkId();
+    network.isCorrectNetwork = !network.current.id || globalConfigs.network.enabledNetworks.includes(network.current.id);
+    // console.log('checkNetwork',network.current.id,network.isCorrectNetwork);
 
     this.setState({ network });
   }
@@ -1452,6 +1454,8 @@ class RimbleTransaction extends React.Component {
 
       // const networkId = this.functionsUtil.getGlobalConfig(['network','requiredNetwork']);
       // const common = { customChain:{ chainId: 1337, networkId: 1337 } };
+
+      console.log(contractMethod,params,account,gas);
 
       return contract.methods[contractMethod](...params)
         .send(value ? { from: account, value, gas/*, common*/ } : { from: account, gas/*, common*/ })

@@ -615,8 +615,8 @@ class DepositRedeem extends Component {
       curveTokenEnabled ? this.functionsUtil.getCurveTokenBalance(this.props.account) : null
     ]);
 
-    const canDeposit = this.props.tokenBalance && this.functionsUtil.BNify(this.props.tokenBalance).gt(0);
     const canRedeem = this.props.idleTokenBalance && this.functionsUtil.BNify(this.props.idleTokenBalance).gt(0);
+    const canDeposit = this.props.tokenBalance && this.functionsUtil.BNify(this.props.tokenBalance).gt(0) && this.functionsUtil.BNify(this.props.accountBalance).gt(0);
 
     const canDepositCurve = curveTokenEnabled && canDeposit;
     const depositCurveEnabled = canDepositCurve;
@@ -634,7 +634,6 @@ class DepositRedeem extends Component {
     if (newState.depositCurveEnabled && !curveTokenEnabled){
       newState.depositCurveEnabled = false;
     }
-    
 
     newState.canRedeem = canRedeem;
     newState.canDeposit = canDeposit;
@@ -1382,7 +1381,7 @@ class DepositRedeem extends Component {
     const showAdvancedDepositOptions = showDepositCurve || showRebalanceOption;
 
     const batchDepositInfo = this.functionsUtil.getGlobalConfig(['tools','batchDeposit']);
-    const batchDepositEnabled = batchDepositInfo.enabled && typeof batchDepositInfo.props.availableTokens[this.props.tokenConfig.idle.token] !== 'undefined';
+    const batchDepositEnabled = batchDepositInfo.enabled && typeof batchDepositInfo.props.availableTokens[this.props.tokenConfig.idle.token] !== 'undefined' && batchDepositInfo.availableNetworks.includes(this.functionsUtil.getCurrentNetworkId());
     const batchDepositDepositEnabled = batchDepositInfo.depositEnabled;
 
     const showBatchDeposit = !useMetaTx && batchDepositEnabled && batchDepositDepositEnabled && !this.props.isMigrationTool && this.state.action === 'deposit';
@@ -1395,6 +1394,8 @@ class DepositRedeem extends Component {
     const showActionFlow = !redeemGovTokens && canPerformAction;
 
     const showBuyFlow = this.state.componentMounted && (!showDepositCurve || this.state.showBuyFlow) && !this.state.depositCurveEnabled && this.state.tokenApproved && !this.state.contractPaused && (!this.state.migrationEnabled || this.state.skipMigration) && this.state.action === 'deposit' && !this.state.canDeposit && !this.state.showETHWrapperEnabled;
+
+    const buyToken = this.functionsUtil.BNify(this.props.accountBalance).gt(0) ? this.props.selectedToken : this.functionsUtil.getBaseToken();
 
     const _referral = this.getReferralAddress();
     const showReferral = _referral && this.state.action === 'deposit' && showActionFlow && !showBuyFlow;
@@ -3017,8 +3018,8 @@ class DepositRedeem extends Component {
               <BuyModal
                 {...this.props}
                 showInline={true}
+                buyToken={buyToken}
                 availableMethods={[]}
-                buyToken={this.props.selectedToken}
               />
             </Flex>
         }
