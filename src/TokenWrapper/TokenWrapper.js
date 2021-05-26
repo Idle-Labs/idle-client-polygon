@@ -330,7 +330,6 @@ class TokenWrapper extends Component {
                         />
                       </Flex>
                     </Flex>
-
                   )
                 }
                 <Box

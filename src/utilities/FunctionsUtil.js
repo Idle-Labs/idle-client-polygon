@@ -712,6 +712,165 @@ class FunctionsUtil {
     const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
     return this.props.network && this.props.network.current ? this.props.network.current.id || defaultNetwork : defaultNetwork;
   }
+  getPolygonBridgeTxs = async (account=false,enabledTokens=[]) => {
+    account = account ? account : this.props.account;
+
+    if (!account){
+      return [];
+    }
+
+    account = account.toLowerCase();
+
+    const txs = [];
+    const currentNetwork = this.getCurrentNetwork();
+    const covalentInfo = this.getGlobalConfig(['network','providers','covalent']);
+    const etherscanInfo = this.getGlobalConfig(['network','providers','etherscan']);
+
+    const currentNetworkId = this.getCurrentNetworkId();
+    const polygonNetworkId = currentNetwork.provider === 'polygon' ? currentNetworkId : this.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetworkId]);
+    // Check if covalent is enabled for the required network
+    if (covalentInfo.enabled && covalentInfo.endpoints[polygonNetworkId]){
+      const covalentApiUrl = covalentInfo.endpoints[polygonNetworkId];
+      const polygonAvailableTokens = this.getGlobalConfig(['tools','polygonBridge','props','availableTokens']);
+
+      const polygonEndpoint = `${covalentApiUrl}address/${account}/transactions_v2/?block-signed-at-asc=true&skip=0`;
+      const polygonTxs = await this.makeCachedRequest(polygonEndpoint);
+
+      const ethereumNetworkId = this.getGlobalConfig(['network','providers','polygon','networkPairs',polygonNetworkId]);
+
+      const etherscanApiUrl = etherscanInfo.endpoints[ethereumNetworkId];
+      const etherscanEndpoint = `${etherscanApiUrl}?&apikey=${env.REACT_APP_ETHERSCAN_KEY}&module=account&action=tokentx&address=${this.props.account}&sort=asc`;
+
+      const childTokensAddresses = Object.values(polygonAvailableTokens).map( tokenConfig => tokenConfig.childToken.address.toLowerCase() );
+      if (polygonTxs && polygonTxs.data && polygonTxs.data.data && polygonTxs.data.data.items && Object.values(polygonTxs.data.data.items).length){
+        polygonTxs.data.data.items.filter( tx => childTokensAddresses.includes(tx.to_address.toLowerCase()) ).forEach( tx => {
+          const tokenConfig = Object.values(polygonAvailableTokens).find( tokenConfig => tokenConfig.childToken.address.toLowerCase() === tx.to_address.toLowerCase() );
+          tokenConfig.address = tokenConfig.childToken.address;
+          if (!enabledTokens || !enabledTokens.length || enabledTokens.includes(tokenConfig.token)){
+            const polygonTx = this.normalizePolygonTx(tx,tokenConfig);
+            if (polygonTx.action === 'Withdraw'){
+              txs.push(polygonTx);
+            }
+          }
+        });
+      }
+    }
+
+    console.log('getPolygonBridgeTxs',txs);
+
+    return txs;
+  }
+  getPolygonBaseTxs = async (account=false,enabledTokens=[],debug=false) => {
+    account = account ? account : this.props.account;
+
+    if (!account || !enabledTokens || !enabledTokens.length){
+      return [];
+    }
+
+    account = account.toLowerCase();
+
+    let results = [];
+    let baseTxs = null;
+    let baseEndpoint = null;
+    const requiredNetwork = this.getCurrentNetworkId();
+    // const selectedStrategy = this.props.selectedStrategy;
+    const covalentInfo = this.getGlobalConfig(['network','providers','covalent']);
+
+    // Check if covalent is enabled for the required network
+    if (covalentInfo.enabled && covalentInfo.endpoints[requiredNetwork]){
+      const covalentApiUrl = covalentInfo.endpoints[requiredNetwork];
+
+      // Get base endpoint cached transactions
+      baseEndpoint = `${covalentApiUrl}address/${account}/transactions_v2/?block-signed-at-asc=true&skip=0`;
+      baseTxs = this.getCachedRequest(baseEndpoint);
+
+      // Check if the latest blockNumber is actually the latest one
+      if (baseTxs && baseTxs.data && baseTxs.data.data && baseTxs.data.data.items && Object.values(baseTxs.data.data.items).length){
+
+        const cachedRows = Object.values(baseTxs.data.data.items).length;
+        const lastCachedTx = Object.values(baseTxs.data.data.items).pop();
+        const lastCachedBlockNumber = lastCachedTx && lastCachedTx.block_height ? parseInt(lastCachedTx.block_height)+1 : 0;
+
+        const covalentEndpointLastBlock = `${covalentApiUrl}address/${account}/transactions_v2/?block-signed-at-asc=true&skip=${cachedRows}`;
+        let latestTxs = await this.makeCachedRequest(covalentEndpointLastBlock,15);
+
+        if (latestTxs && latestTxs.data.data.items && latestTxs.data.data.items.length){
+          latestTxs = await this.filterPolygonTxs(latestTxs.data.data.items,enabledTokens);
+          // latestTxs = await this.filterEthereumTxs(latestTxs,enabledTokens,true,false);
+
+          if (latestTxs && Object.values(latestTxs).length){
+
+            const latestBlockNumbers = Object.values(latestTxs).map( lastTx => (parseInt(lastTx.block_height)) );
+            const lastRealBlockNumber = Math.max(...latestBlockNumbers);
+
+            // If real tx blockNumber differs from last blockNumber
+            if (lastRealBlockNumber>=lastCachedBlockNumber){
+              // Merge latest Txs with baseTxs
+              Object.values(latestTxs).forEach((tx) => {
+                const txFound = Object.keys(baseTxs.data.data.items).includes(tx.tx_hash);
+                if (!txFound){
+                  baseTxs.data.data.items[tx.tx_hash] = tx;
+                }
+              });
+
+              // Save covalent txs
+              this.saveFetchedTxs(baseEndpoint,baseTxs.data.data.items);
+            }
+          }
+        }
+      } else {
+        baseTxs = null;
+      }
+
+      let txs = baseTxs;
+
+      if (debug){
+        console.log('DEBUG - txs',txs);
+      }
+
+      if (!txs){
+        // Make request
+        txs = await this.makeRequest(baseEndpoint);
+
+        // console.log('makeRequest 1',account,baseEndpoint,txs,txs.data.message,txs.data.status,parseInt(txs.data.status));
+
+        if (!txs || !txs.data || parseInt(txs.data.status)===0){
+          let requestCount = 0;
+          let requestStatus = false;
+          do {
+            await this.asyncTimeout(500);
+            txs = await this.makeRequest(baseEndpoint);
+            requestCount++;
+            requestStatus = txs && txs.data ? parseInt(txs.data.status) : false;
+            // console.log('makeRequest '+(requestCount+1),account,baseEndpoint,txs,txs.data.message,txs.data.status,parseInt(txs.data.status));
+          } while (requestCount<5 && !requestStatus);
+        }
+
+        // Cache request
+        if (txs && txs.data && parseInt(txs.data.status)>0){
+          const timestamp = parseInt(Date.now()/1000);
+          const cachedRequests_polygon = this.getCachedDataWithLocalStorage('cachedRequests_polygon',{});
+          cachedRequests_polygon[baseEndpoint] = {
+            data:txs,
+            timestamp
+          };
+          this.setCachedDataWithLocalStorage('cachedRequests_polygon',cachedRequests_polygon);
+        }
+      }
+
+      if (txs && txs.data && txs.data.data && txs.data.data.items){
+        results = txs.data.data.items;
+      } else {
+        return [];
+      }
+    }
+
+    return {
+      results,
+      baseTxs,
+      baseEndpoint
+    };
+  }
   getEtherscanBaseTxs = async (account=false,firstBlockNumber=0,endBlockNumber='latest',enabledTokens=[],debug=false) => {
     account = account ? account : this.props.account;
 
@@ -731,25 +890,25 @@ class FunctionsUtil {
     const etherscanInfo = this.getGlobalConfig(['network','providers','etherscan']);
 
     let results = [];
-    let etherscanBaseTxs = null;
-    let etherscanBaseEndpoint = null;
+    let baseTxs = null;
+    let baseEndpoint = null;
 
     // Check if etherscan is enabled for the required network
     if (etherscanInfo.enabled && etherscanInfo.endpoints[requiredNetwork]){
       const etherscanApiUrl = etherscanInfo.endpoints[requiredNetwork];
 
       // Get base endpoint cached transactions
-      etherscanBaseEndpoint = `${etherscanApiUrl}?strategy=${selectedStrategy}&apikey=${env.REACT_APP_ETHERSCAN_KEY}&module=account&action=tokentx&address=${account}&startblock=${firstIdleBlockNumber}&endblock=${endBlockNumber}&sort=asc`;
-      etherscanBaseTxs = this.getCachedRequest(etherscanBaseEndpoint);
+      baseEndpoint = `${etherscanApiUrl}?strategy=${selectedStrategy}&apikey=${env.REACT_APP_ETHERSCAN_KEY}&module=account&action=tokentx&address=${account}&startblock=${firstIdleBlockNumber}&endblock=${endBlockNumber}&sort=asc`;
+      baseTxs = this.getCachedRequest(baseEndpoint);
 
       if (debug){
-        console.log('DEBUG - CACHED - etherscanBaseTxs',etherscanBaseTxs);
+        console.log('DEBUG - CACHED - baseTxs',baseTxs);
       }
 
       // Check if the latest blockNumber is actually the latest one
-      if (etherscanBaseTxs && etherscanBaseTxs.data.result && Object.values(etherscanBaseTxs.data.result).length){
+      if (baseTxs && baseTxs.data.result && Object.values(baseTxs.data.result).length){
 
-        const lastCachedTx = Object.values(etherscanBaseTxs.data.result).pop();
+        const lastCachedTx = Object.values(baseTxs.data.result).pop();
         const lastCachedBlockNumber = lastCachedTx && lastCachedTx.blockNumber ? parseInt(lastCachedTx.blockNumber)+1 : firstBlockNumber;
 
         const etherscanEndpointLastBlock = `${etherscanApiUrl}?strategy=${selectedStrategy}&apikey=${env.REACT_APP_ETHERSCAN_KEY}&module=account&action=tokentx&address=${account}&startblock=${lastCachedBlockNumber}&endblock=${endBlockNumber}&sort=asc`;
@@ -757,7 +916,7 @@ class FunctionsUtil {
 
         if (latestTxs && latestTxs.data.result && latestTxs.data.result.length){
           
-          latestTxs = await this.filterEtherscanTxs(latestTxs.data.result,enabledTokens,true,false);
+          latestTxs = await this.filterEthereumTxs(latestTxs.data.result,enabledTokens,true,false);
 
           if (latestTxs && Object.values(latestTxs).length){
 
@@ -766,24 +925,24 @@ class FunctionsUtil {
 
             // If real tx blockNumber differs from last blockNumber
             if (lastRealBlockNumber>=lastCachedBlockNumber){
-              // Merge latest Txs with etherscanBaseTxs
+              // Merge latest Txs with baseTxs
               Object.values(latestTxs).forEach((tx) => {
-                const txFound = Object.keys(etherscanBaseTxs.data.result).includes(tx.hashKey);
+                const txFound = Object.keys(baseTxs.data.result).includes(tx.hashKey);
                 if (!txFound){
-                  etherscanBaseTxs.data.result[tx.hashKey] = tx;
+                  baseTxs.data.result[tx.hashKey] = tx;
                 }
               });
 
               // Save etherscan txs
-              this.saveEtherscanTxs(etherscanBaseEndpoint,etherscanBaseTxs.data.result);
+              this.saveFetchedTransactions(baseEndpoint,baseTxs.data.result);
             }
           }
         }
       } else {
-        etherscanBaseTxs = null;
+        baseTxs = null;
       }
 
-      let txs = etherscanBaseTxs;
+      let txs = baseTxs;
 
       if (debug){
         console.log('DEBUG - txs',txs);
@@ -791,19 +950,19 @@ class FunctionsUtil {
 
       if (!txs){
         // Make request
-        txs = await this.makeRequest(etherscanBaseEndpoint);
+        txs = await this.makeRequest(baseEndpoint);
 
-        // console.log('makeRequest 1',account,etherscanBaseEndpoint,txs,txs.data.message,txs.data.status,parseInt(txs.data.status));
+        // console.log('makeRequest 1',account,baseEndpoint,txs,txs.data.message,txs.data.status,parseInt(txs.data.status));
 
         if (!txs || !txs.data || parseInt(txs.data.status)===0){
           let requestCount = 0;
           let requestStatus = false;
           do {
             await this.asyncTimeout(500);
-            txs = await this.makeRequest(etherscanBaseEndpoint);
+            txs = await this.makeRequest(baseEndpoint);
             requestCount++;
             requestStatus = txs && txs.data ? parseInt(txs.data.status) : false;
-            // console.log('makeRequest '+(requestCount+1),account,etherscanBaseEndpoint,txs,txs.data.message,txs.data.status,parseInt(txs.data.status));
+            // console.log('makeRequest '+(requestCount+1),account,baseEndpoint,txs,txs.data.message,txs.data.status,parseInt(txs.data.status));
           } while (requestCount<5 && !requestStatus);
         }
 
@@ -811,7 +970,7 @@ class FunctionsUtil {
         if (txs && txs.data && parseInt(txs.data.status)>0){
           const timestamp = parseInt(Date.now()/1000);
           const cachedRequests = this.getCachedDataWithLocalStorage('cachedRequests',{});
-          cachedRequests[etherscanBaseEndpoint] = {
+          cachedRequests[baseEndpoint] = {
             data:txs,
             timestamp
           };
@@ -828,8 +987,8 @@ class FunctionsUtil {
 
     return {
       results,
-      etherscanBaseTxs,
-      etherscanBaseEndpoint
+      baseTxs,
+      baseEndpoint
     };
   }
   getCurveTxs = async (account=false,firstBlockNumber=0,endBlockNumber='latest',enabledTokens=[]) => {
@@ -837,7 +996,7 @@ class FunctionsUtil {
     // results = results ? Object.values(results) : [];
     return this.filterCurveTxs(results,enabledTokens);
   }
-  saveEtherscanTxs = (endpoint,txs) => {
+  saveFetchedTransactions = (endpoint,txs) => {
     const txsToStore = {};
     Object.keys(txs).forEach(txHash => {
       const tx = txs[txHash];
@@ -855,36 +1014,88 @@ class FunctionsUtil {
     this.saveCachedRequest(endpoint,false,cachedRequest);
   }
   getEtherscanTxs = async (account=false,firstBlockNumber=0,endBlockNumber='latest',enabledTokens=[],debug=false) => {
-    const {
-      results,
-      etherscanBaseTxs,
-      etherscanBaseEndpoint
-    } = await this.getEtherscanBaseTxs(account,firstBlockNumber,endBlockNumber,enabledTokens,debug);
+
+    let resultData = null;
+    const currentNetwork = this.getCurrentNetwork();
+
+    switch (currentNetwork.explorer){
+      case 'polygon':
+        resultData = await this.getPolygonBaseTxs(account,enabledTokens,debug);
+      break;
+      case 'etherscan':
+      default:
+        resultData = await this.getEtherscanBaseTxs(account,firstBlockNumber,endBlockNumber,enabledTokens,debug);
+      break;
+    }
 
     // Initialize prevTxs
-    let etherscanTxs = {};
-    if (etherscanBaseTxs){
-      // Filter txs for token
-      etherscanTxs = await this.processStoredTxs(results,enabledTokens);
-    } else {
-      const allAvailableTokens = Object.keys(this.props.availableTokens);
-      // Save base endpoint with all available tokens
-      etherscanTxs = await this.filterEtherscanTxs(results,allAvailableTokens);
+    let txs = {};
 
-      // Store filtered txs
-      if (etherscanTxs && Object.keys(etherscanTxs).length){
-        this.saveEtherscanTxs(etherscanBaseEndpoint,etherscanTxs);
+    if (resultData){
+      let {
+        results,
+        baseTxs,
+        baseEndpoint
+      } = resultData;
+
+      if (baseTxs){
+        // Filter txs for token
+        txs = await this.processStoredTxs(results,enabledTokens);
+      } else {
+        const allAvailableTokens = Object.keys(this.props.availableTokens);
+        // Save base endpoint with all available tokens
+        switch (currentNetwork.explorer){
+          case 'polygon':
+            txs = await this.filterPolygonTxs(results,allAvailableTokens);
+          break;
+          case 'etherscan':
+          default:
+            txs = await this.filterEthereumTxs(results,allAvailableTokens);
+          break;
+        }
+
+        // Store filtered txs
+        if (txs && Object.keys(txs).length){
+          this.saveFetchedTransactions(baseEndpoint,txs);
+        }
       }
     }
 
-    if (debug){
-      console.log('DEBUG - getEtherscanTxs -',etherscanTxs);
-    }
+    // console.log('DEBUG - TXS -',txs);
 
     return Object
-            .values(etherscanTxs)
+            .values(txs)
             .filter(tx => (tx.token && enabledTokens.includes(tx.token.toUpperCase())))
             .sort((a,b) => (a.timeStamp < b.timeStamp ? -1 : 1));
+  }
+  checkPolygonTransactionIncluded = async (txHash,rootChainAddress) => {
+    const txDetails = await this.props.web3Polygon.eth.getTransactionReceipt(txHash);
+    const block = txDetails.blockNumber;
+    console.log('checkPolygonTransactionIncluded',block);
+    return await (new Promise(async (resolve, reject) => {
+      this.props.web3.eth.subscribe(
+        "logs",
+        {
+          address: rootChainAddress,
+        },
+        async (error, result) => {
+          if (error) {
+            reject(error);
+          }
+
+          console.log(result);
+          if (result.data) {
+            let transaction = this.props.web3.eth.abi.decodeParameters(
+              ["uint256", "uint256", "bytes32"],
+              result.data
+            );
+            if (block <= transaction["1"]) {
+              resolve(result);
+            }
+          }
+        }
+      );
+    }));
   }
   filterCurveTxs = async (results,enabledTokens=[]) => {
 
@@ -906,7 +1117,67 @@ class FunctionsUtil {
 
     return curveTxs;
   }
-  filterEtherscanTxs = async (results,enabledTokens=[],processTxs=true,processStoredTxs=true) => {
+  normalizePolygonTx = (tx,tokenConfig=null) => {
+    tokenConfig = tokenConfig || Object.values(this.props.availableTokens).find( tokenConfig => tokenConfig.idle.address.toLowerCase() === tx.to_address.toLowerCase() );
+    
+    const depositLogEvent = tx.log_events && tokenConfig && tokenConfig.idle ? tx.log_events.find( log => log.sender_address.toLowerCase() === tokenConfig.address.toLowerCase() && log.decoded.name === 'Transfer' && log.decoded.params.find(param=>param.name==='from').value.toLowerCase() === this.props.account.toLowerCase() && log.decoded.params.find(param=>param.name==='to').value.toLowerCase() === tokenConfig.idle.address.toLowerCase() ) : null;
+    const redeemLogEvent = tx.log_events && tokenConfig && tokenConfig.idle ? tx.log_events.find( log => log.sender_address.toLowerCase() === tokenConfig.address.toLowerCase() && log.decoded.name === 'Transfer' && log.decoded.params.find(param=>param.name==='to').value.toLowerCase() === this.props.account.toLowerCase() && log.decoded.params.find(param=>param.name==='from').value.toLowerCase() === tokenConfig.idle.address.toLowerCase() ) : null;
+    const withdrawLogEvent = tx.log_events && tokenConfig && tokenConfig.address ? tx.log_events.find( log => log.sender_address.toLowerCase() === tokenConfig.address.toLowerCase() && log.decoded.name === 'Transfer' && log.decoded.params.find(param=>param.name==='from').value.toLowerCase() === this.props.account.toLowerCase() && log.decoded.params.find(param=>param.name==='to').value.toLowerCase() === '0x0000000000000000000000000000000000000000' ) : null;
+
+    const tokenDecimal = 18;
+    const tokenSymbol = tokenConfig.token;
+    const hashKey = `${tx.tx_hash}_${tokenSymbol}`;
+    const idleToken = tokenConfig.idle ? tokenConfig.idle.token : null;
+    const action = depositLogEvent ? 'Deposit' : (redeemLogEvent ? 'Redeem' : (withdrawLogEvent ? 'Withdraw' : null));
+    const timeStamp = parseInt(this.strToMoment(tx.block_signed_at)._d.getTime()/1000);
+
+    let logEvent = null;
+    switch (action){
+      case 'Deposit':
+        logEvent = depositLogEvent;
+      break;
+      case 'Redeem':
+        logEvent = redeemLogEvent;
+      break;
+      case 'Withdraw':
+        logEvent = withdrawLogEvent;
+      break;
+      default:
+      break;
+    }
+
+    const value = logEvent ? this.fixTokenDecimals(logEvent.decoded.params.find( param => param.name==='value' ).value,tokenDecimal) : this.fixTokenDecimals(tx.value,tokenDecimal);
+
+    return {
+      value,
+      action,
+      hashKey,
+      timeStamp,
+      idleToken,
+      tokenSymbol,
+      tokenDecimal,
+      hash:tx.tx_hash,
+      to:tx.to_address,
+      status:'Completed',
+      from:tx.from_address,
+      gasUsed:tx.gas_spent,
+      gasPrice:tx.gas_price,
+      token:tokenConfig.token,
+      contractAddress:tokenConfig.address,
+      blockNumber:tx.log_events[0].block_height
+    };
+  }
+  filterPolygonTxs = async (txs,enabledTokens,processTransactions=true) => {
+    const idleTokensAddresses = Object.values(this.props.availableTokens).map( tokenConfig => tokenConfig.idle.address.toLowerCase() );
+    const polygonTxs = txs.filter( tx => idleTokensAddresses.includes(tx.to_address.toLowerCase()) ).reduce( (output,tx) => {
+      const mappedTx = this.normalizePolygonTx(tx);
+      output[mappedTx.hashKey] = mappedTx;
+      return output;
+    },{});
+
+    return processTransactions ? await this.processTransactions(polygonTxs,enabledTokens) : polygonTxs;
+  }
+  filterEthereumTxs = async (results,enabledTokens=[],processTxs=true,processStoredTxs=true) => {
     if (!this.props.account || !results || !results.length || typeof results.forEach !== 'function'){
       return [];
     }
@@ -925,7 +1196,7 @@ class FunctionsUtil {
     const curveSwapContract = this.getGlobalConfig(['curve','migrationContract']);
     const curveDepositContract = this.getGlobalConfig(['curve','depositContract']);
 
-    // this.customLog('filterEtherscanTxs',enabledTokens,results);
+    // this.customLog('filterEthereumTxs',enabledTokens,results);
 
     enabledTokens.forEach(token => {
       const tokenConfig = this.props.availableTokens[token];
@@ -1107,7 +1378,7 @@ class FunctionsUtil {
     });
   
     if (processTxs){
-      etherscanTxs = await this.processEtherscanTransactions(etherscanTxs,enabledTokens,processStoredTxs);
+      etherscanTxs = await this.processTransactions(etherscanTxs,enabledTokens,processStoredTxs);
     }
 
     // console.log('etherscanTxs',etherscanTxs);
@@ -1171,7 +1442,7 @@ class FunctionsUtil {
 
     return output;
   }
-  processEtherscanTransactions = async (etherscanTxs,enabledTokens=[],processStoredTxs=true) => {
+  processTransactions = async (etherscanTxs,enabledTokens=[],processStoredTxs=true) => {
 
     if (!enabledTokens || !enabledTokens.length){
       enabledTokens = Object.keys(this.props.availableTokens);
@@ -1434,7 +1705,7 @@ class FunctionsUtil {
 
       txsToProcess = txsToProcess && Object.values(txsToProcess).length ? txsToProcess : this.getStoredTransactions(this.props.account,tokenKey,selectedToken);
       
-      // this.customLog('txsToProcess',selectedToken,txsToProcess);
+      // console.log('txsToProcess',selectedToken,txsToProcess);
 
       // if (!Object.values(txsToProcess).length && selectedToken==='DAI' && Object.values(this.props.transactions).length>0){
       //   debugger;
@@ -1520,7 +1791,7 @@ class FunctionsUtil {
           }));
         }
 
-        // this.customLog('realTx (localStorage)',realTx);
+        // console.log('realTx (localStorage)',realTx);
 
         // Skip txs from other wallets if not meta-txs
         if (!realTx || (!isMetaTx && realTx.from.toLowerCase() !== this.props.account.toLowerCase())){
@@ -1733,6 +2004,8 @@ class FunctionsUtil {
         // Save processed tx
         etherscanTxs[txHash] = realTx;
         // etherscanTxs.push(realTx);
+
+        // console.log('processStoredTxs',txHash,realTx);
 
         // Store processed Tx
         if (!tx.realTx){

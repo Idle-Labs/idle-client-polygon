@@ -303,8 +303,6 @@ class SendTxWithBalance extends Component {
       const value = params.value || null;
       contractName = contractName || this.props.contractInfo.name;
 
-      console.log('contractMethodSendWrapper',contractName, methodName, methodParams, value);
-
       this.props.contractMethodSendWrapper(contractName, methodName, methodParams, value, callback, callbackReceipt);
 
       this.setState((prevState) => ({

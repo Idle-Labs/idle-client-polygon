@@ -48,7 +48,7 @@ const availableTokens = {
         idle:{
           abi:IdleTokenV4,
           token:'idleDAIYield',
-          address:'0x45da93199005cBf37DB9374d4Fc74B2ef87f7217',
+          address:'0x45a3598Ac8aDb2c6233979f710DC6a3D006238E0',
         },
         protocols:[
           {

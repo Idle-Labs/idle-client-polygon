@@ -14,6 +14,7 @@ class PolygonBridge extends Component {
     stats:[],
     steps:null,
     infoBox:null,
+    polygonTxs:[],
     globalStats:[],
     inputValue:null,
     description:null,
@@ -39,7 +40,7 @@ class PolygonBridge extends Component {
     distributionSpeed:null,
     approveDescription:null,
     balanceSelectorInfo:null,
-    transactionSucceeded:false
+    transactionSucceeded:null
   };
 
   // Utils
@@ -59,6 +60,14 @@ class PolygonBridge extends Component {
 
   componentDidMount(){
     this.loadData();
+    this.loadPolygonTxs();
+  }
+
+  async loadPolygonTxs(){
+    const polygonTxs = await this.functionsUtil.getPolygonBridgeTxs();
+    this.setState({
+      polygonTxs
+    });
   }
 
   async componentDidUpdate(prevProps,prevState){
@@ -73,7 +82,7 @@ class PolygonBridge extends Component {
       // Init contracts
       await Promise.all([
         this.props.initContract(rootTokenConfig.name,rootTokenConfig.address,rootTokenConfig.abi),
-        this.props.initContractCustomProvider(childTokenConfig.name,childTokenConfig.address,childTokenConfig.abi,this.props.web3Polygon)
+        this.props.initContract(childTokenConfig.name,childTokenConfig.address,childTokenConfig.abi)
       ]);
 
       this.setState({
@@ -133,41 +142,22 @@ class PolygonBridge extends Component {
   }
 
   async transactionSucceeded(tx,amount,params){
-    let infoBox = null;
-    console.log('transactionSucceeded',tx);
+    /*
     switch (this.state.selectedAction){
       case 'Deposit':
         const depositedTokensLog = tx.txReceipt && tx.txReceipt.logs ? tx.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
         const depositedTokens = depositedTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensLog.data,16),this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0);
-        debugger;
-        infoBox = {
-          icon:'DoneAll',
-          iconProps:{
-            color:this.props.theme.colors.transactions.status.completed
-          },
-          text:`You have successfully deposited <strong>${depositedTokens.toFixed(4)} ${this.state.selectedToken}</strong> in the Polygon chain. Please wait up to 10 minutes for your balance to be reflected in the Polygon chain.`
-        }
       break;
       case 'Withdraw':
         const withdrawnTokensLog = tx.txReceipt && tx.txReceipt.logs ? tx.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
-        const withdrawnTokens = withdrawnTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(withdrawnTokensLog.data,16),this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0);
-        debugger;
-        infoBox = {
-          icon:'DoneAll',
-          iconProps:{
-            color:this.props.theme.colors.transactions.status.completed
-          },
-          text:`You have successfully withdrawn <strong>${withdrawnTokens.toFixed(4)} ${this.state.selectedToken}</strong> from the Polygon chain. Please wait up to 2-3 hours to be able to complete the withdrawal.`
-        }
+        const withdrawnTokens = withdrawnTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(withdrawnTokensLog.data,16),this.state.tokenConfig.decimals) : (tx.txReceipt && tx.txReceipt.events && tx.txReceipt.events.Transfer ? this.functionsUtil.fixTokenDecimals(tx.txReceipt.events.Transfer.returnValues.value,this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0));
       break;
       default:
       break;
     }
-
-    const transactionSucceeded = true;
-
+    */
+    const transactionSucceeded = tx;
     this.setState({
-      infoBox,
       transactionSucceeded
     },() => {
       this.updateData();
@@ -178,12 +168,32 @@ class PolygonBridge extends Component {
     const newState = {};
     switch (this.state.selectedAction){
       case 'Deposit':
+        newState.steps = [];
         newState.permitEnabled = false;
         newState.approveEnabled = true;
         newState.availableNetworks = [1,5];
         newState.contractInfo = this.props.toolProps.contracts.ERC20Predicate;
         newState.approveDescription = `Approve the contract to deposit your ${this.state.selectedToken}`;
         newState.balanceProp = await this.functionsUtil.getTokenBalance(this.state.tokenConfig.rootToken.name,this.props.account);
+        if (this.state.transactionSucceeded){
+          const depositedTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          const depositedTokens = depositedTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensLog.data,16),this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0);
+          newState.infoBox = {
+            icon:'DoneAll',
+            iconProps:{
+              color:this.props.theme.colors.transactions.status.completed
+            },
+            text:`You have successfully deposited <strong>${depositedTokens.toFixed(4)} ${this.state.selectedToken}</strong> in the Polygon chain. Please wait up to 10 minutes for your balance to be reflected in the Polygon chain.`
+          }
+        } else {
+          newState.infoBox = {
+            icon:'InfoOutline',
+            iconProps:{
+              color:'cellText'
+            },
+            text:`Please note that deposits require up to 10 minutes to be reflected in the Polygon chain.`
+          }
+        }
       break;
       case 'Withdraw':
         newState.permitEnabled = false;
@@ -192,6 +202,49 @@ class PolygonBridge extends Component {
         newState.availableNetworks = [137,80001];
         newState.contractInfo = this.state.tokenConfig.childToken;
         newState.balanceProp = await this.functionsUtil.getTokenBalance(this.state.tokenConfig.childToken.name,this.props.account);
+
+        const currentNetwork = this.functionsUtil.getCurrentNetwork();
+        const maticNetwork = currentNetwork.name;
+        const mainNetwork = currentNetwork.network === 'mainnet' ? this.functionsUtil.getGlobalConfig(['network','availableNetworks',1,'name']) : this.functionsUtil.getGlobalConfig(['network','availableNetworks',5,'name']);
+        newState.steps = [
+          {
+            icon:'LooksOne',
+            completed:false,
+            description:`Withdraw ${this.state.selectedToken} from ${maticNetwork} network`
+          },
+          {
+            icon:'LooksTwo',
+            completed:false,
+            description:`Wait for the checkpoint to be submitted`
+          },
+          {
+            icon:'Looks3',
+            completed:false,
+            description:`Exit ${this.state.selectedToken} from ${mainNetwork} network`
+          },
+        ];
+        if (this.state.transactionSucceeded){
+          const withdrawnTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          const withdrawnTokens = withdrawnTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(withdrawnTokensLog.data,16),this.state.tokenConfig.decimals) : (this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events && this.state.transactionSucceeded.txReceipt.events.Transfer ? this.functionsUtil.fixTokenDecimals(this.state.transactionSucceeded.txReceipt.events.Transfer.returnValues.value,this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0));
+          newState.infoBox = {
+            icon:'DoneAll',
+            iconProps:{
+              color:this.props.theme.colors.transactions.status.completed
+            },
+            text:`You have successfully withdrawn <strong>${withdrawnTokens.toFixed(4)} ${this.state.selectedToken}</strong> from the Polygon chain. Please wait up to 2-3 hours to be able to complete the withdrawal.`
+          }
+        } else {
+          newState.infoBox = {
+            icon:'InfoOutline',
+            iconProps:{
+              color:'cellText'
+            },
+            text:`Please note that withdrawals from the Polygon chain take up to 2-3 hours to be completed.`
+          }
+        }
+      break;
+      case 'Exit':
+        newState.availableNetworks = [1,5];
       break;
       default:
       break;
@@ -250,8 +303,9 @@ class PolygonBridge extends Component {
 
   render() {
 
-    const isStake = this.state.selectedAction === 'Deposit';
-    const isUnstake = this.state.selectedAction === 'Withdraw';
+    const isExit = this.state.selectedAction === 'Exit';
+    const isDeposit = this.state.selectedAction === 'Deposit';
+    const isWithdraw = this.state.selectedAction === 'Withdraw';
     const currentNetworkId = this.functionsUtil.getCurrentNetworkId();
 
     return (
@@ -333,6 +387,7 @@ class PolygonBridge extends Component {
                             Choose the action:
                           </Text>
                           <Flex
+                            mb={3}
                             alignItems={'center'}
                             flexDirection={'row'}
                             justifyContent={'space-between'}
@@ -341,8 +396,11 @@ class PolygonBridge extends Component {
                               {...this.props}
                               cardProps={{
                                 px:3,
-                                py:3,
-                                width:0.48
+                                py:2,
+                                width:0.325
+                              }}
+                              textProps={{
+                                fontWeight:2
                               }}
                               text={'Deposit'}
                               iconColor={'deposit'}
@@ -355,8 +413,11 @@ class PolygonBridge extends Component {
                               {...this.props}
                               cardProps={{
                                 px:3,
-                                py:3,
-                                width:0.48
+                                py:2,
+                                width:0.325
+                              }}
+                              textProps={{
+                                fontWeight:2
                               }}
                               text={'Withdraw'}
                               iconColor={'redeem'}
@@ -365,13 +426,29 @@ class PolygonBridge extends Component {
                               handleClick={ e => this.setAction('Withdraw') }
                               isActive={ this.state.selectedAction === 'Withdraw' }
                             />
+                            <CardIconButton
+                              {...this.props}
+                              cardProps={{
+                                px:3,
+                                py:2,
+                                width:0.325
+                              }}
+                              textProps={{
+                                fontWeight:2
+                              }}
+                              text={'Exit'}
+                              icon={'SwapHoriz'}
+                              iconColor={'redeem'}
+                              iconBgColor={'#ceeff6'}
+                              handleClick={ e => this.setAction('Exit') }
+                              isActive={ this.state.selectedAction === 'Exit' }
+                            />
                           </Flex>
                           {
                             !this.state.availableNetworks.includes(currentNetworkId) ? (
                               <DashboardCard
                                 cardProps={{
                                   p:3,
-                                  mt:3,
                                   width:1
                                 }}
                               >
@@ -380,12 +457,12 @@ class PolygonBridge extends Component {
                                   flexDirection={'column'}
                                 >
                                   <Icon
-                                    size={'2.3em'}
+                                    size={'1.8em'}
                                     name={'Warning'}
                                     color={'cellText'}
                                   />
                                   <Text
-                                    mt={2}
+                                    mt={1}
                                     fontSize={2}
                                     color={'cellText'}
                                     textAlign={'center'}
@@ -401,87 +478,60 @@ class PolygonBridge extends Component {
                                 mb={[4,3]}
                               >
                                 {
-                                  !this.state.transactionSucceeded && (
-                                    <DashboardCard
-                                      cardProps={{
-                                        p:3,
-                                        mt:3,
-                                        width:1
-                                      }}
+                                  (isDeposit || isWithdraw) ? (
+                                    <SendTxWithBalance
+                                      {...this.props}
+                                      error={this.state.error}
+                                      steps={this.state.steps}
+                                      infoBox={this.state.infoBox}
+                                      action={this.state.selectedAction}
+                                      tokenConfig={this.state.tokenConfig}
+                                      tokenBalance={this.state.balanceProp}
+                                      contractInfo={this.state.contractInfo}
+                                      permitEnabled={this.state.permitEnabled}
+                                      approveEnabled={this.state.approveEnabled}
+                                      callback={this.transactionSucceeded.bind(this)}
+                                      approveDescription={this.state.approveDescription}
+                                      contractApproved={this.contractApproved.bind(this)}
+                                      balanceSelectorInfo={this.state.balanceSelectorInfo}
+                                      changeInputCallback={this.changeInputCallback.bind(this)}
+                                      getTransactionParams={this.getTransactionParams.bind(this)}
                                     >
-                                      <Flex
-                                        alignItems={'center'}
-                                        flexDirection={'column'}
+                                      <DashboardCard
+                                        cardProps={{
+                                          p:3
+                                        }}
                                       >
-                                        <Icon
-                                          size={'1.8em'}
-                                          color={'cellText'}
-                                          name={'InfoOutline'}
-                                        />
-                                        <Text
-                                          mt={2}
-                                          fontSize={2}
-                                          color={'cellText'}
-                                          textAlign={'center'}
+                                        <Flex
+                                          alignItems={'center'}
+                                          flexDirection={'column'}
                                         >
-                                          {
-                                            isStake ? 'Please note that deposits require up to 10 minutes to be reflected in the Polygon chain.' : 'Please note that withdrawals from the Polygon chain take up to 2-3 hours to be completed.'
-                                          }
-                                        </Text>
-                                      </Flex>
-                                    </DashboardCard>
+                                          <Icon
+                                            name={'MoneyOff'}
+                                            color={'cellText'}
+                                            size={this.props.isMobile ? '1.8em' : '2.3em'}
+                                          />
+                                          <Text
+                                            mt={1}
+                                            fontSize={2}
+                                            color={'cellText'}
+                                            textAlign={'center'}
+                                          >
+                                            {
+                                              isDeposit ? (
+                                                `You don't have any ${this.state.selectedToken} in your wallet.`
+                                              ) : isWithdraw && (
+                                                `You don't have any ${this.state.selectedToken} to withdraw.`
+                                              )
+                                            }
+                                          </Text>
+                                        </Flex>
+                                      </DashboardCard>
+                                    </SendTxWithBalance>
+                                  ) : isExit && (
+                                    <Box></Box>
                                   )
                                 }
-                                <SendTxWithBalance
-                                  {...this.props}
-                                  error={this.state.error}
-                                  steps={this.state.steps}
-                                  infoBox={this.state.infoBox}
-                                  action={this.state.selectedAction}
-                                  tokenConfig={this.state.tokenConfig}
-                                  tokenBalance={this.state.balanceProp}
-                                  contractInfo={this.state.contractInfo}
-                                  permitEnabled={this.state.permitEnabled}
-                                  approveEnabled={this.state.approveEnabled}
-                                  callback={this.transactionSucceeded.bind(this)}
-                                  approveDescription={this.state.approveDescription}
-                                  contractApproved={this.contractApproved.bind(this)}
-                                  balanceSelectorInfo={this.state.balanceSelectorInfo}
-                                  changeInputCallback={this.changeInputCallback.bind(this)}
-                                  getTransactionParams={this.getTransactionParams.bind(this)}
-                                >
-                                  <DashboardCard
-                                    cardProps={{
-                                      p:3,
-                                      mt:3
-                                    }}
-                                  >
-                                    <Flex
-                                      alignItems={'center'}
-                                      flexDirection={'column'}
-                                    >
-                                      <Icon
-                                        name={'MoneyOff'}
-                                        color={'cellText'}
-                                        size={this.props.isMobile ? '1.8em' : '2.3em'}
-                                      />
-                                      <Text
-                                        mt={1}
-                                        fontSize={2}
-                                        color={'cellText'}
-                                        textAlign={'center'}
-                                      >
-                                        {
-                                          isStake ? (
-                                            `You don't have any ${this.state.selectedToken} in your wallet.`
-                                          ) : isUnstake && (
-                                            `You don't have any ${this.state.selectedToken} to withdraw.`
-                                          )
-                                        }
-                                      </Text>
-                                    </Flex>
-                                  </DashboardCard>
-                                </SendTxWithBalance>
                               </Box>
                             ) : (
                               <Flex

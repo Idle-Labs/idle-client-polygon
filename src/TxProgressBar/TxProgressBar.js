@@ -324,6 +324,7 @@ class TxProgressBar extends Component {
   }
 
   render() {
+    const currentNetwork = this.functionsUtil.getCurrentNetwork();
     return (
       <Flex flexDirection={'column'} alignItems={'center'}>
         {
@@ -416,7 +417,7 @@ class TxProgressBar extends Component {
                   textAlign={'center'}
                   color={this.props.textColor ? this.props.textColor : 'cellText'}
                 >
-                  View in Etherscan
+                  View in {this.functionsUtil.capitalize(currentNetwork.explorer)}
                 </Text>
                 <Icon
                   ml={1}
