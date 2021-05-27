@@ -51,8 +51,12 @@ class Dashboard extends Component {
   }
 
   async loadMenu() {
-    const baseRoute = this.functionsUtil.getGlobalConfig(['dashboard','baseRoute']);
+
+    const currentNetworkId = this.functionsUtil.getCurrentNetworkId();
+    // console.log(this.props.networkInitialized,this.props.network,currentNetworkId);
+
     const strategies = this.functionsUtil.getGlobalConfig(['strategies']);
+    const baseRoute = this.functionsUtil.getGlobalConfig(['dashboard','baseRoute']);
     const menu = Object.keys(strategies).filter( s => ( !strategies[s].comingSoon ) ).map(strategy => ({
         submenu:[],
         color:'#fff',
@@ -66,7 +70,6 @@ class Dashboard extends Component {
         imageInactiveDark:strategies[strategy].iconInactiveDark
       })
     );
-
 
     const curveConfig = this.functionsUtil.getGlobalConfig(['curve']);
 
@@ -113,9 +116,11 @@ class Dashboard extends Component {
         selected:false,
         route:'/dashboard/tools',
         bgColor:this.props.theme.colors.primary,
-        submenu:Object.values(this.functionsUtil.getGlobalConfig(['tools'])).filter( u => (u.enabled) )
+        submenu:Object.values(this.functionsUtil.getGlobalConfig(['tools'])).filter( tool => (tool.enabled && (!tool.availableNetworks || tool.availableNetworks.includes(currentNetworkId))) )
       }
     );
+
+    // console.log(currentNetworkId,menu);
 
     // Add Stats
     menu.push(
@@ -319,8 +324,8 @@ class Dashboard extends Component {
     this.props.setCurrentSection('dashboard');
 
     this.loadUtils();
-    await this.loadMenu();
-    this.loadParams();
+    // await this.loadMenu();
+    // this.loadParams();
   }
 
   async componentDidMount() {
@@ -335,6 +340,8 @@ class Dashboard extends Component {
 
     if (!this.props.web3){
       return this.props.initWeb3();
+    } else if (!this.props.networkInitialized){
+      return this.props.checkNetwork();
     } else if (!this.props.accountInizialized){
       return this.props.initAccount();
     } else if (!this.props.contractsInitialized){
@@ -364,6 +371,12 @@ class Dashboard extends Component {
       }, () => {
         this.loadParams();
       });
+    }
+    
+    const networkChanged = !prevProps.networkInitialized && this.props.networkInitialized;
+    if (networkChanged){
+      await this.loadMenu();
+      this.loadParams();
     }
 
     const viewOnly = this.props.connectorName === 'custom';
@@ -517,8 +530,8 @@ class Dashboard extends Component {
       section = section.replace(this.state.baseRoute +'/','');
     }
 
-    const newRoute = isDashboard ? this.state.baseRoute +'/' + section : section;
-    window.location.hash=newRoute;
+    const newRoute = isDashboard ? this.state.baseRoute+'/'+section : section;
+    window.location.hash = newRoute;
 
     // Send GA event
     this.functionsUtil.sendGoogleAnalyticsEvent({
@@ -609,7 +622,7 @@ class Dashboard extends Component {
           backgroundColor={'dashboardBg'}
         >
           {
-            !this.props.accountInizialized || !this.props.contractsInitialized || !PageComponent ? (
+            !this.props.networkInitialized || !this.props.accountInizialized || !this.props.contractsInitialized || !PageComponent ? (
               <Flex
                 width={1}
                 minHeight={'50vg'}
@@ -659,7 +672,7 @@ class Dashboard extends Component {
                         my:3,
                         flexDirection:'column'
                       }}
-                      text={ !this.props.accountInizialized ? 'Loading account...' : ( !this.props.contractsInitialized ? 'Loading contracts...' : 'Loading assets...' )}
+                      text={ !this.props.networkInitialized ? 'Loading network...' : (!this.props.accountInizialized ? 'Loading account...' : ( !this.props.contractsInitialized ? 'Loading contracts...' : 'Loading assets...' ))}
                     />
                   ) : (
                     <DashboardCard

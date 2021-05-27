@@ -17,7 +17,45 @@ const availableTokens = {
   // Goerli
   5:{
     best:{
+      DAI:{
+        abi:DAI,
+        token:'DAI',
+        decimals:18,
+        enabled:true,
+        govTokensDisabled:false,
+        color:'hsl(40, 95%, 59%)',
+        address:'0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F',
+        deposit:{
+          minAmountForMint:10000,
+        },
+        wyre:{
+          destCurrency:'DAI'
+        },
+        ramp:{
+          swapAsset:'DAI'
+        },
+        defiPrime:{
+          token:'dai'
+        },
+        idle:{
+          abi:IdleTokenV4,
+          token:'idleDAIYield',
+          address:'0x45a3598Ac8aDb2c6233979f710DC6a3D006238E0',
+        },
+        protocols:[
+          {
+            abi:aToken,
+            name:'aave',
+            enabled:true,
+            token:'amDAI',
+            address:'0x639cB7b21ee2161DF9c882483C9D55c90c20Ca3e',
+            decimals:18,
+            functions:{
 
+            }
+          },
+        ]
+      },
     },
     risk:{
 

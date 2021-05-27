@@ -640,18 +640,21 @@ class App extends Component {
                         transaction,
                         initAccount,
                         initContract,
+                        checkNetwork,
                         transactions,
                         initSimpleID,
                         permitClient,
                         tokenDecimals,
                         accountBalance,
                         needsPreflight,
+                        maticPOSClient,
                         validateAccount,
                         rejectValidation,
                         accountValidated,
                         getTokenDecimals,
                         getAccountBalance,
                         accountBalanceLow,
+                        networkInitialized,
                         accountInizialized,
                         accountBalanceToken,
                         userRejectedConnect,
@@ -690,11 +693,13 @@ class App extends Component {
                                       contracts={contracts}
                                       web3Polygon={web3Polygon}
                                       initAccount={initAccount}
+                                      checkNetwork={checkNetwork}
                                       permitClient={permitClient}
                                       initSimpleID={initSimpleID}
                                       initContract={initContract}
                                       transactions={transactions}
                                       buyToken={this.state.buyToken}
+                                      maticPOSClient={maticPOSClient}
                                       logout={this.logout.bind(this)}
                                       accountBalance={accountBalance}
                                       themeMode={this.state.themeMode}
@@ -710,6 +715,7 @@ class App extends Component {
                                       getAccountBalance={getAccountBalance}
                                       accountBalanceLow={accountBalanceLow}
                                       accountInizialized={accountInizialized}
+                                      networkInitialized={networkInitialized}
                                       selectedToken={this.state.selectedToken}
                                       connectorName={this.state.connectorName}
                                       setStrategy={this.setStrategy.bind(this)}

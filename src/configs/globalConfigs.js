@@ -1228,10 +1228,11 @@ const globalConfigs = {
     polygonBridge:{
       enabled:true,
       route:'polygon-bridge',
-      label:'Polygon L2 Bridge',
+      label:'Polygon PoS Bridge',
       subComponent:PolygonBridge,
+      availableNetworks:[1,5,137,80001],
       image:'images/protocols/polygon.svg',
-      desc:'Deposit and Withdraw your tokens from Matic L2 network with PoS Bridge.',
+      desc:'Deposit and Withdraw your tokens from Polygon network with PoS Bridge.',
       props:{
         contracts:{
           ERC20Predicate:{
@@ -1301,6 +1302,7 @@ const globalConfigs = {
       enabled:true,
       label:'ETH Wrapper',
       route:'eth-wrapper',
+      availableNetworks:[1,42],
       subComponent:TokenWrapper,
       image:'images/tokens/WETH.svg',
       desc:'Wrap your ETH and get WETH. Unwrap your WETH and get back ETH.',
@@ -1327,6 +1329,7 @@ const globalConfigs = {
       label:'LP Staking',
       route:'lp-staking',
       subComponent:Staking,
+      availableNetworks:[1],
       desc:'Stake your Sushi Swap LP tokens and earn $IDLE rewards',
       props:{
         availableTokens:{
@@ -1356,6 +1359,7 @@ const globalConfigs = {
     },
     coverProtocol:{
       enabled:false,
+      availableNetworks:[1],
       label:'Cover Protocol',
       route:'cover-protocol',
       subComponent:CoverProtocol,
@@ -1583,8 +1587,9 @@ const globalConfigs = {
     batchMigration:{
       enabled:true,
       claimEnabled:true,
-      depositEnabled:false,
       icon:'FileDownload',
+      depositEnabled:false,
+      availableNetworks:[1],
       route:'batch-migration',
       label:'Batch Migration',
       subComponent:BatchMigration,
@@ -1776,8 +1781,9 @@ const globalConfigs = {
     },
     tokenMigration:{
       enabled:true,
-      icon:'SwapHoriz',
       route:'convert',
+      icon:'SwapHoriz',
+      availableNetworks:[1],
       label:'Token Migration',
       desc:'Easily convert your Compound, Fulcrum, Aave and iEarn tokens into Idle',
       subComponent:TokenMigration,
@@ -2062,9 +2068,9 @@ const globalConfigs = {
     },
     addFunds:{
       enabled:true,
-      icon:'AddCircleOutline',
       route:'add-funds',
       label:'Add Funds',
+      icon:'AddCircleOutline',
       desc:'Buy tokens with your Bank account, Credit card or Ethereum Wallet',
       subComponent:BuyModal,
       directProps:{
@@ -2077,6 +2083,7 @@ const globalConfigs = {
       icon:'Security',
       route:'nexus-mutual',
       label:'Nexus Mutual',
+      availableNetworks:[1],
       desc:'Buy tokens with Bank account or Credit card',
       subComponent:NexusMutual,
       props:{
@@ -2095,6 +2102,7 @@ const globalConfigs = {
       icon:'Sync',
       route:'token-swap',
       label:'Token Swap',
+      availableNetworks:[1,5,42],
       desc:'Easily swap your tokens using Kyber Swap widget',
       subComponent:TokenSwap,
       props:{

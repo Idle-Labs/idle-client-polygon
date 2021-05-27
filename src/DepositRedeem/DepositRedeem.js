@@ -71,7 +71,8 @@ class DepositRedeem extends Component {
     metaTransactionsEnabled:true,
     skippedGovTokensBalance:null,
     minAmountForMintReached:false,
-    loadingErc20ForwarderTx:false
+    loadingErc20ForwarderTx:false,
+    showPolygonBridgeEnabled:false,
   };
 
   // Utils
@@ -133,6 +134,12 @@ class DepositRedeem extends Component {
   toggleShowETHWrapper = showETHWrapperEnabled => {
     this.setState({
       showETHWrapperEnabled
+    });
+  }
+
+  toggleShowPolygonBridge = showPolygonBridgeEnabled => {
+    this.setState({
+      showPolygonBridgeEnabled
     });
   }
 
@@ -1329,6 +1336,8 @@ class DepositRedeem extends Component {
       return null;
     }
 
+    const currentNetwork = this.functionsUtil.getCurrentNetwork();
+
     const viewOnly = this.props.connectorName === 'custom';
 
     const govTokensDisabled = this.props.tokenConfig.govTokensDisabled;
@@ -1390,10 +1399,17 @@ class DepositRedeem extends Component {
     const ETHWrapperComponent = ethWrapperInfo.subComponent;
     const showETHWrapper = this.props.selectedToken === 'WETH' && ethWrapperInfo.enabled && !this.props.isMigrationTool && this.state.action === 'deposit';
 
-    const canPerformAction = /*!depositCurve && !this.state.redeemCurveEnabled && */((this.state.action === 'deposit' && this.state.canDeposit) || (this.state.action === 'redeem' && this.state.canRedeem) || redeemGovTokens) && (!this.state.showETHWrapperEnabled || this.state.action === 'redeem');
+    const polygonBridgeInfo = this.functionsUtil.getGlobalConfig(['tools','polygonBridge']);
+    // const PolygonBridgeComponent = polygonBridgeInfo.subComponent;
+    // const polygonNetworkId = this.functionsUtil.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetwork.id]);
+    // const polygonNetwork = this.functionsUtil.getGlobalConfig(['network','availableNetworks',polygonNetworkId]);
+    // const showPolygonBridge = currentNetwork.provider === 'infura' && polygonNetworkId && polygonBridgeInfo.enabled && this.state.action === 'deposit';
+
+    const canPerformAction = /*!depositCurve && !this.state.redeemCurveEnabled && */((this.state.action === 'deposit' && this.state.canDeposit) || (this.state.action === 'redeem' && this.state.canRedeem) || redeemGovTokens) && (!this.state.showETHWrapperEnabled || this.state.action === 'redeem') && (!this.state.showPolygonBridgeEnabled || this.state.action === 'redeem');
     const showActionFlow = !redeemGovTokens && canPerformAction;
 
-    const showBuyFlow = this.state.componentMounted && (!showDepositCurve || this.state.showBuyFlow) && !this.state.depositCurveEnabled && this.state.tokenApproved && !this.state.contractPaused && (!this.state.migrationEnabled || this.state.skipMigration) && this.state.action === 'deposit' && !this.state.canDeposit && !this.state.showETHWrapperEnabled;
+    const showBuyFlow = this.state.componentMounted && currentNetwork.provider === 'infura' && (!showDepositCurve || this.state.showBuyFlow) && !this.state.depositCurveEnabled && this.state.tokenApproved && !this.state.contractPaused && (!this.state.migrationEnabled || this.state.skipMigration) && this.state.action === 'deposit' && !this.state.canDeposit && !this.state.showETHWrapperEnabled;
+    const showPolygonBridge = this.state.componentMounted && this.state.action === 'deposit' && !this.state.canDeposit && currentNetwork.provider === 'polygon';
 
     const buyToken = this.functionsUtil.BNify(this.props.accountBalance).gt(0) ? this.props.selectedToken : this.functionsUtil.getBaseToken();
 
@@ -2441,7 +2457,49 @@ class DepositRedeem extends Component {
                                   />
                               }
                             </Flex>
-                          )
+                          )/* : showPolygonBridge && (
+                            <Flex
+                              width={1}
+                              alignItems={'center'}
+                              flexDirection={'column'}
+                              justifyContent={'center'}
+                            >
+                              <DashboardCard
+                                cardProps={{
+                                  py:3,
+                                  px:2,
+                                  mt:3,
+                                  display:'flex',
+                                  alignItems:'center',
+                                  flexDirection:'column',
+                                  justifyContent:'center',
+                                  pb:this.state.showAdvancedOptions ? 3 : 2,
+                                }}
+                              >
+                                <Flex
+                                  alignItems={'center'}
+                                  justifyContent={'row'}
+                                >
+                                  <Checkbox
+                                    required={false}
+                                    label={`Deposit to Polygon network`}
+                                    checked={this.state.showPolygonBridgeEnabled}
+                                    onChange={ e => this.toggleShowPolygonBridge(e.target.checked) }
+                                  />
+                                </Flex>
+                              </DashboardCard>
+                              {
+                                this.state.showPolygonBridgeEnabled && 
+                                  <PolygonBridgeComponent
+                                    {...this.props}
+                                    fullWidth={true}
+                                    action={'Deposit'}
+                                    toolProps={polygonBridgeInfo.props}
+                                    selectedToken={this.props.selectedToken}
+                                  />
+                              }
+                            </Flex>
+                          )*/
                         }
                         {
                           showRedeemCurve && this.state.canRedeem && (
@@ -2965,7 +3023,7 @@ class DepositRedeem extends Component {
                     )
                   ) : (
                     <Flex
-                      mt={4}
+                      mt={3}
                       flexDirection={'column'}
                     >
                       <FlexLoader
@@ -3007,7 +3065,7 @@ class DepositRedeem extends Component {
           )
         }
         {
-          showBuyFlow &&
+          showBuyFlow ? (
             <Flex
               mt={3}
               width={[1,0.5]}
@@ -3022,6 +3080,48 @@ class DepositRedeem extends Component {
                 availableMethods={[]}
               />
             </Flex>
+          ) : showPolygonBridge && (
+            <Flex
+              mt={3}
+              width={[1,0.36]}
+              alignItems={'stretch'}
+              flexDirection={'column'}
+              justifyContent={'center'}
+            >
+              <DashboardCard
+                cardProps={{
+                  p:3
+                }}
+              >
+                <Flex
+                  alignItems={'center'}
+                  flexDirection={'column'}
+                >
+                  <Image
+                    height={'2em'}
+                    src={polygonBridgeInfo.image}
+                  />
+                  <Text
+                    mt={1}
+                    fontSize={2}
+                    color={'cellText'}
+                    textAlign={'center'}
+                  >
+                    Use the Polygon PoS Bridge to deposit your {this.props.selectedToken} in the Polygon blockchain.
+                  </Text>
+                  <RoundButton
+                    buttonProps={{
+                      mt:2,
+                      width:[1,1/2]
+                    }}
+                    handleClick={ e => this.props.goToSection(`tools/${polygonBridgeInfo.route}/${this.props.selectedToken}`)}
+                  >
+                    Deposit
+                  </RoundButton>
+                </Flex>
+              </DashboardCard>
+            </Flex>
+          )
         }
 
         <ShareModal

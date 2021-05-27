@@ -16,7 +16,7 @@ class RoundButton extends Component {
     return (
        <Button
         {...buttonProps}
-        onClick={this.props.handleClick}
+        onClick={this.props.handleClick || this.props.onClick}
        >
         {this.props.children}
        </Button>

@@ -706,7 +706,9 @@ class FunctionsUtil {
   }
   getCurrentNetwork = () => {
     const networkId = this.getCurrentNetworkId();
-    return this.getGlobalConfig(['network','availableNetworks',networkId]);
+    const network = this.getGlobalConfig(['network','availableNetworks',networkId]);
+    network.id = networkId;
+    return network;
   }
   getCurrentNetworkId = () => {
     const defaultNetwork = this.getGlobalConfig(['network','requiredNetwork']);
@@ -722,9 +724,11 @@ class FunctionsUtil {
     account = account.toLowerCase();
 
     const txs = [];
+    // let exitTxs = [];
     const currentNetwork = this.getCurrentNetwork();
     const covalentInfo = this.getGlobalConfig(['network','providers','covalent']);
-    const etherscanInfo = this.getGlobalConfig(['network','providers','etherscan']);
+    // const etherscanInfo = this.getGlobalConfig(['network','providers','etherscan']);
+    // const erc20PredicateConfig = this.getGlobalConfig(['tools','polygonBridge','props','contracts','ERC20Predicate']);
 
     const currentNetworkId = this.getCurrentNetworkId();
     const polygonNetworkId = currentNetwork.provider === 'polygon' ? currentNetworkId : this.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetworkId]);
@@ -732,23 +736,48 @@ class FunctionsUtil {
     if (covalentInfo.enabled && covalentInfo.endpoints[polygonNetworkId]){
       const covalentApiUrl = covalentInfo.endpoints[polygonNetworkId];
       const polygonAvailableTokens = this.getGlobalConfig(['tools','polygonBridge','props','availableTokens']);
-
       const polygonEndpoint = `${covalentApiUrl}address/${account}/transactions_v2/?block-signed-at-asc=true&skip=0`;
-      const polygonTxs = await this.makeCachedRequest(polygonEndpoint);
 
-      const ethereumNetworkId = this.getGlobalConfig(['network','providers','polygon','networkPairs',polygonNetworkId]);
+      // const ethereumNetworkId = this.getGlobalConfig(['network','providers','polygon','networkPairs',polygonNetworkId]);
+      // const etherscanApiUrl = etherscanInfo.endpoints[ethereumNetworkId];
+      // const etherscanEndpoint = `${etherscanApiUrl}?&apikey=${env.REACT_APP_ETHERSCAN_KEY}&module=account&action=tokentx&address=${this.props.account}&sort=asc`;
 
-      const etherscanApiUrl = etherscanInfo.endpoints[ethereumNetworkId];
-      const etherscanEndpoint = `${etherscanApiUrl}?&apikey=${env.REACT_APP_ETHERSCAN_KEY}&module=account&action=tokentx&address=${this.props.account}&sort=asc`;
+      const [
+        last_state_id,
+        polygonTxs,
+        // etherscanTxs
+      ] = await Promise.all([
+        this.getPolygonCurrentLastStateId(),
+        this.makeCachedRequest(polygonEndpoint,120),
+        // this.makeCachedRequest(etherscanEndpoint,120)
+      ]);
 
+      // const rootTokensAddresses = Object.values(polygonAvailableTokens).map( tokenConfig => tokenConfig.rootToken.address.toLowerCase() );
       const childTokensAddresses = Object.values(polygonAvailableTokens).map( tokenConfig => tokenConfig.childToken.address.toLowerCase() );
+
+      // if (etherscanTxs && etherscanTxs.data && etherscanTxs.data.result){
+      //   exitTxs = etherscanTxs.data.result.filter( tx => rootTokensAddresses.includes(tx.contractAddress.toLowerCase()) && tx.from.toLowerCase() === erc20PredicateConfig.address.toLowerCase() && tx.to.toLowerCase() === this.props.account.toLowerCase() );
+      // }
+
       if (polygonTxs && polygonTxs.data && polygonTxs.data.data && polygonTxs.data.data.items && Object.values(polygonTxs.data.data.items).length){
-        polygonTxs.data.data.items.filter( tx => childTokensAddresses.includes(tx.to_address.toLowerCase()) ).forEach( tx => {
+        const filteredTxs = polygonTxs.data.data.items.filter( tx => childTokensAddresses.includes(tx.to_address.toLowerCase()) );
+          await this.asyncForEach(filteredTxs, async (tx) => {
           const tokenConfig = Object.values(polygonAvailableTokens).find( tokenConfig => tokenConfig.childToken.address.toLowerCase() === tx.to_address.toLowerCase() );
           tokenConfig.address = tokenConfig.childToken.address;
           if (!enabledTokens || !enabledTokens.length || enabledTokens.includes(tokenConfig.token)){
             const polygonTx = this.normalizePolygonTx(tx,tokenConfig);
             if (polygonTx.action === 'Withdraw'){
+              const tx_state_id = parseInt(this.props.web3.utils.hexToNumberString(polygonTx.logs[polygonTx.logs.length-1].topics[1]));
+              polygonTx.included = last_state_id && tx_state_id ? last_state_id>=tx_state_id : false;
+              // polygonTx.exited = exitTxs.find( tx => tx.hash.toLowerCase() === polygonTx.hash.toLowerCase() )
+              polygonTx.exited = false;
+              try {
+                await this.props.maticPOSClient.exitERC20(polygonTx.hash, {from: this.props.account, encodeAbi:true});
+              } catch (error){
+                if (error.toString().match('EXIT_ALREADY_PROCESSED')){
+                  polygonTx.exited = true;
+                }
+              }
               txs.push(polygonTx);
             }
           }
@@ -756,7 +785,7 @@ class FunctionsUtil {
       }
     }
 
-    console.log('getPolygonBridgeTxs',txs);
+    // console.log('getPolygonBridgeTxs',txs);
 
     return txs;
   }
@@ -1047,6 +1076,7 @@ class FunctionsUtil {
         switch (currentNetwork.explorer){
           case 'polygon':
             txs = await this.filterPolygonTxs(results,allAvailableTokens);
+            // console.log('polygon txs',results,allAvailableTokens,txs);
           break;
           case 'etherscan':
           default:
@@ -1068,34 +1098,42 @@ class FunctionsUtil {
             .filter(tx => (tx.token && enabledTokens.includes(tx.token.toUpperCase())))
             .sort((a,b) => (a.timeStamp < b.timeStamp ? -1 : 1));
   }
-  checkPolygonTransactionIncluded = async (txHash,rootChainAddress) => {
-    const txDetails = await this.props.web3Polygon.eth.getTransactionReceipt(txHash);
-    const block = txDetails.blockNumber;
-    console.log('checkPolygonTransactionIncluded',block);
-    return await (new Promise(async (resolve, reject) => {
-      this.props.web3.eth.subscribe(
-        "logs",
+  getPolygonCurrentLastStateId = async () => {
+    const contractInstance = new this.props.web3Polygon.eth.Contract(
+      [
         {
-          address: rootChainAddress,
+          constant: true,
+          inputs: [],
+          name: "lastStateId",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          payable: false,
+          stateMutability: "view",
+          type: "function",
         },
-        async (error, result) => {
-          if (error) {
-            reject(error);
-          }
+      ],
+      "0x0000000000000000000000000000000000001001"
+    );
 
-          console.log(result);
-          if (result.data) {
-            let transaction = this.props.web3.eth.abi.decodeParameters(
-              ["uint256", "uint256", "bytes32"],
-              result.data
-            );
-            if (block <= transaction["1"]) {
-              resolve(result);
-            }
-          }
-        }
-      );
-    }));
+    return parseInt(await contractInstance.methods.lastStateId().call());
+  }
+  checkPolygonTransactionIncluded = async (txHash) => {
+    const [
+      last_state_id,
+      tx,
+    ] = await Promise.all([
+      this.getPolygonCurrentLastStateId(),
+      this.props.web3Polygon.eth.getTransactionReceipt(txHash)
+    ]);
+
+    const tx_state_id = tx.logs && tx.logs.length ? this.props.web3.utils.hexToNumberString(tx.logs[tx.logs.length-1].topics[1]) : null;
+
+    return tx_state_id ? parseInt(last_state_id) >= parseInt(tx_state_id) : null;
   }
   filterCurveTxs = async (results,enabledTokens=[]) => {
 
@@ -1146,9 +1184,13 @@ class FunctionsUtil {
       break;
     }
 
+    const logs = tx.log_events ? tx.log_events.map( log => ({
+      topics:log.raw_log_topics
+    })) : [];
     const value = logEvent ? this.fixTokenDecimals(logEvent.decoded.params.find( param => param.name==='value' ).value,tokenDecimal) : this.fixTokenDecimals(tx.value,tokenDecimal);
 
     return {
+      logs,
       value,
       action,
       hashKey,
@@ -3099,7 +3141,6 @@ class FunctionsUtil {
       }
     );
   }
-
   checkTokenApproved = async (contractName,contractAddr,walletAddr) => {
     const [
       balance,
@@ -3120,7 +3161,7 @@ class FunctionsUtil {
       contractName, 'allowance', [walletAddr, contractAddr]
     );
   }
-  contractMethodSendWrapper = (contractName,methodName,params,callback,callback_receipt,txData) => {
+  contractMethodSendWrapper = (contractName,methodName,params,callback,callback_receipt,txData=null,send_raw=false,raw_tx_data=null) => {
     this.props.contractMethodSendWrapper(contractName, methodName, params, null, (tx)=>{
       if (typeof callback === 'function'){
         callback(tx);
@@ -3129,7 +3170,7 @@ class FunctionsUtil {
       if (typeof callback_receipt === 'function'){
         callback_receipt(tx);
       }
-    }, null, txData);
+    }, null, txData, send_raw, raw_tx_data);
   }
   disableERC20 = (contractName,address,callback,callback_receipt) => {
     this.props.contractMethodSendWrapper(contractName, 'approve', [

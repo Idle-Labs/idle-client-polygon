@@ -32,6 +32,7 @@ const RimbleTransactionContext = React.createContext({
   accountValidated: {},
   initAccount: () => {},
   accountBalanceLow: {},
+  checkNetwork: () => {},
   initSimpleID: () => {},
   initContract: () => {},
   erc20ForwarderClient: {},
@@ -44,6 +45,7 @@ const RimbleTransactionContext = React.createContext({
     checkNetwork: () => {},
     isCorrectNetwork: null,
   },
+  networkInitialized:false,
   accountInizialized: false,
   getTokenDecimals: () => {},
   rejectValidation: () => {},
@@ -131,6 +133,9 @@ class RimbleTransaction extends React.Component {
     // detect Network account change
     if (window.ethereum){
       window.ethereum.on('networkChanged', async (networkId) => {
+        this.functionsUtil.removeStoredItem('cachedRequests');
+        this.functionsUtil.removeStoredItem('cachedRequests_polygon');
+        this.functionsUtil.removeStoredItem('transactions');
         await this.props.clearCachedData(() => {
           this.checkNetwork();
         });
@@ -419,7 +424,7 @@ class RimbleTransaction extends React.Component {
 
     // const infuraConfig = globalConfigs.network.providers.infura;
     const polygonConfig = globalConfigs.network.providers.polygon;
-    
+
     const currentNetwork = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId]);
     const polygonNetworkId = currentNetwork.provider === 'polygon' ? networkId : this.functionsUtil.getGlobalConfig(['network','providers','polygon','networkPairs',networkId]);
 
@@ -427,8 +432,8 @@ class RimbleTransaction extends React.Component {
       const web3PolygonRpc = polygonConfig.rpc[polygonNetworkId]+this.functionsUtil.getGlobalConfig(['network','providers','polygon','key']);
       web3Polygon = new Web3(new Web3.providers.HttpProvider(web3PolygonRpc));
 
-      const maticProvider = networkConfig.network==='testnet' ? web3 : new Web3(new Web3.providers.HttpProvider(web3PolygonRpc));
-      const parentProvider = networkConfig.network==='mainnet' ? web3 : new Web3(new Web3.providers.HttpProvider(web3InfuraRpc));
+      const maticProvider = networkConfig.provider==='polygon' ? web3 : new Web3(new Web3.providers.HttpProvider(web3PolygonRpc));
+      const parentProvider = networkConfig.provider==='infura' ? web3 : new Web3(new Web3.providers.HttpProvider(web3InfuraRpc));
 
       const maticPOSClientConfig = {
         maticProvider,
@@ -1272,12 +1277,15 @@ class RimbleTransaction extends React.Component {
     network.required = this.getRequiredNetwork();
     network.current = await this.getNetworkId();
     network.isCorrectNetwork = !network.current.id || globalConfigs.network.enabledNetworks.includes(network.current.id);
-    // console.log('checkNetwork',network.current.id,network.isCorrectNetwork);
+    const networkInitialized = !!network.current.id;
 
-    this.setState({ network });
+    this.setState({
+      network,
+      networkInitialized
+    });
   }
 
-  contractMethodSendWrapper = async (contractName, contractMethod, params = [], value = null, callback = null, callback_receipt = null, gasLimit = null, txData = null) => {
+  contractMethodSendWrapper = async (contractName, contractMethod, params = [], value = null, callback = null, callback_receipt = null, gasLimit = null, txData = null, send_raw=false, raw_tx_data=null) => {
     // Is it on the correct network?
     if (!this.state.network.isCorrectNetwork) {
       // wrong network modal
@@ -1303,6 +1311,25 @@ class RimbleTransaction extends React.Component {
       return false;
     }
 
+    const { account, contracts } = this.state;
+    let contract = contracts.find(c => c.name === contractName);
+    if (!contract) {
+      if (typeof callback === 'function') {
+        callback(null,'contract_not_found');
+      }
+      return this.functionsUtil.customLog(`No contract with name ${contractName}`);
+    }
+
+    contract = contract.contract;
+
+    // Does the method exists?
+    if (typeof contract.methods[contractMethod] === 'undefined'){
+      if (typeof callback === 'function') {
+        callback(null,'method_not_found');
+      }
+      return false;
+    }
+
     // Is the contract loaded?
 
     // Create new tx and add to collection
@@ -1320,22 +1347,6 @@ class RimbleTransaction extends React.Component {
     // Show toast for starting transaction
     this.updateTransaction(transaction);
 
-    const { account, contracts } = this.state;
-    let contract = contracts.find(c => c.name === contractName);
-    if (!contract) {
-      if (typeof callback === 'function') {
-        callback(null,'contract_not_found');
-      }
-      return this.functionsUtil.customLog(`No contract with name ${contractName}`);
-    }
-
-    contract = contract.contract;
-
-    // Does the method exists?
-    // if (typeof contract.methods[contractMethod] === 'undefined'){
-    //   return false;
-    // }
-
     let manualConfirmationTimeoutId = null;
 
     try {
@@ -1345,25 +1356,6 @@ class RimbleTransaction extends React.Component {
       }
 
       this.functionsUtil.customLog('contractMethodSendWrapper',contractName,contract._address,account,contractMethod,params,(value ? { from: account, value } : { from: account }));
-
-      // estimate gas price
-      let gas = await contract.methods[contractMethod](...params)
-        .estimateGas(value ? { from: account, value } : { from: account })
-        .catch(e => console.error(e));
-
-      if (gas) {
-
-        gas = this.functionsUtil.BNify(gas);
-        gas = gas.plus(gas.times(this.functionsUtil.BNify('0.2'))); // Increase 20% of enstimation
-
-        // Check if gas is under the gasLimit param
-        if (gasLimit && gas.lt(this.functionsUtil.BNify(gasLimit))){
-          gas = this.functionsUtil.BNify(gasLimit);
-        }
-
-        // Convert gasLimit toBN with web3 utils
-        gas = this.state.web3.utils.toBN(gas.integerValue(BigNumber.ROUND_FLOOR));
-      }
 
       const confirmationCallback = (confirmationNumber, receipt) => {
 
@@ -1460,74 +1452,113 @@ class RimbleTransaction extends React.Component {
         }
       };
 
+      const transactionHashCallback = hash => {
+        this.functionsUtil.customLog('txOnTransactionHash', hash);
+
+        if (!hash){
+          this.functionsUtil.customLog('Skip transactionHash due to hash empty', hash);
+          return false;
+        }
+
+        transaction.transactionHash = hash;
+        transaction.status = "pending";
+        transaction.recentEvent = "transactionHash";
+        this.updateTransaction(transaction);
+
+        if (callback_receipt){
+          callback_receipt(transaction);
+        }
+
+        // Wait for manual confirmation only for mobile
+        if (this.props.isMobile){
+          if (manualConfirmationTimeoutId){
+            window.clearTimeout(manualConfirmationTimeoutId);
+          }
+          manualConfirmationTimeoutId = window.setTimeout( () => manualConfirmation(hash,60000), 20000);
+        }
+      };
+
+      const errorCallback = error => {
+        console.log('Tx error',error);
+        
+        const isDeniedTx = error && error.message && typeof error.message.includes === 'function' ? error.message.includes('User denied transaction signature') : false;
+        
+        // Set error on transaction
+        transaction.status = "error";
+        transaction.recentEvent = "error";
+        this.updateTransaction(transaction);
+
+
+        // Show ToastProvider
+        if (!isDeniedTx){
+          window.toastProvider.addMessage("Something went wrong", {
+            icon: 'Block',
+            actionHref: "",
+            actionText: "",
+            variant: "failure",
+            colorTheme: 'light',
+            secondaryMessage: "Please retry",
+          });
+
+          const isError = error instanceof Error;
+
+          if (typeof error.message !== 'undefined'){
+            this.openTransactionErrorModal(null,error.message);
+          } else if (this.functionsUtil.checkUrlOrigin() && isError){
+            Sentry.captureException(error);
+          }
+        }
+
+        if (typeof callback === 'function') {
+          callback(transaction,error);
+        }
+      };
+
       // const networkId = this.functionsUtil.getGlobalConfig(['network','requiredNetwork']);
       // const common = { customChain:{ chainId: 1337, networkId: 1337 } };
 
-      return contract.methods[contractMethod](...params)
-        .send(value ? { from: account, value, gas/*, common*/ } : { from: account, gas/*, common*/ })
-        .on("transactionHash", hash => {
-          this.functionsUtil.customLog('txOnTransactionHash', hash);
+      // console.log('send_raw',send_raw,{
+      //   from:account,
+      //   data:raw_tx_data,
+      //   to:contract._address
+      // });
+      if (send_raw && raw_tx_data){
+        return this.state.web3.eth.sendTransaction({
+            from:account,
+            data:raw_tx_data,
+            to:contract._address
+          })
+          .on("transactionHash", transactionHashCallback)
+          .on("receipt", receiptCallback)
+          .on("confirmation", confirmationCallback)
+          .on("error", errorCallback);
+      } else {
+        // estimate gas price
+        let gas = await contract.methods[contractMethod](...params)
+          .estimateGas(value ? { from: account, value } : { from: account })
+          .catch(e => console.error(e));
 
-          if (!hash){
-            this.functionsUtil.customLog('Skip transactionHash due to hash empty', hash);
-            return false;
+        if (gas) {
+          gas = this.functionsUtil.BNify(gas);
+          gas = gas.plus(gas.times(this.functionsUtil.BNify('0.2'))); // Increase 20% of enstimation
+
+          // Check if gas is under the gasLimit param
+          if (gasLimit && gas.lt(this.functionsUtil.BNify(gasLimit))){
+            gas = this.functionsUtil.BNify(gasLimit);
           }
 
-          transaction.transactionHash = hash;
-          transaction.status = "pending";
-          transaction.recentEvent = "transactionHash";
-          this.updateTransaction(transaction);
+          // Convert gasLimit toBN with web3 utils
+          gas = this.state.web3.utils.toBN(gas.integerValue(BigNumber.ROUND_FLOOR));
+        }
 
-          if (callback_receipt){
-            callback_receipt(transaction);
-          }
+        return contract.methods[contractMethod](...params)
+          .send(value ? { from: account, value, gas } : { from: account, gas })
+          .on("transactionHash", transactionHashCallback)
+          .on("receipt", receiptCallback)
+          .on("confirmation", confirmationCallback)
+          .on("error", errorCallback);
+      }
 
-          // Wait for manual confirmation only for mobile
-          if (this.props.isMobile){
-            if (manualConfirmationTimeoutId){
-              window.clearTimeout(manualConfirmationTimeoutId);
-            }
-            manualConfirmationTimeoutId = window.setTimeout( () => manualConfirmation(hash,60000), 20000);
-          }
-        })
-        .on("receipt", receiptCallback)
-        .on("confirmation", confirmationCallback)
-        .on("error", error => {
-
-          console.log('Tx error',error);
-          
-          const isDeniedTx = error && error.message && typeof error.message.includes === 'function' ? error.message.includes('User denied transaction signature') : false;
-          
-          // Set error on transaction
-          transaction.status = "error";
-          transaction.recentEvent = "error";
-          this.updateTransaction(transaction);
-
-
-          // Show ToastProvider
-          if (!isDeniedTx){
-            window.toastProvider.addMessage("Something went wrong", {
-              icon: 'Block',
-              actionHref: "",
-              actionText: "",
-              variant: "failure",
-              colorTheme: 'light',
-              secondaryMessage: "Please retry",
-            });
-
-            const isError = error instanceof Error;
-
-            if (typeof error.message !== 'undefined'){
-              this.openTransactionErrorModal(null,error.message);
-            } else if (this.functionsUtil.checkUrlOrigin() && isError){
-              Sentry.captureException(error);
-            }
-          }
-
-          if (typeof callback === 'function') {
-            callback(transaction,error);
-          }
-        });
     } catch (error) {
 
       console.log('Tx catch error',error);
@@ -1823,14 +1854,16 @@ class RimbleTransaction extends React.Component {
     web3Subscription: null,
     accountValidated: null,
     accountBalanceDAI: null,
-    erc20ForwarderClient:null,
     initWeb3: this.initWeb3,
     accountBalanceLow: null,
     accountInizialized:false,
+    networkInitialized:false,
+    erc20ForwarderClient:null,
     subscribedTransactions:{},
     contractsInitialized:false,
     initAccount: this.initAccount,
     accountValidationPending: null,
+    checkNetwork: this.checkNetwork,
     initSimpleID: this.initSimpleID,
     initContract: this.initContract,
     checkPreflight: this.checkPreflight,

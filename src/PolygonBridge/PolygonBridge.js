@@ -1,18 +1,22 @@
 import React, { Component } from 'react';
 import FlexLoader from '../FlexLoader/FlexLoader';
 import { Flex, Box, Text, Icon } from "rimble-ui";
+import RoundButton from '../RoundButton/RoundButton';
 import FunctionsUtil from '../utilities/FunctionsUtil';
 // import TokenWrapper from '../TokenWrapper/TokenWrapper';
 import AssetSelector from '../AssetSelector/AssetSelector';
 import DashboardCard from '../DashboardCard/DashboardCard';
 import CardIconButton from '../CardIconButton/CardIconButton';
+import GenericSelector from '../GenericSelector/GenericSelector';
 import SendTxWithBalance from '../SendTxWithBalance/SendTxWithBalance';
+import ExecuteTransaction from '../ExecuteTransaction/ExecuteTransaction';
 
 class PolygonBridge extends Component {
 
   state = {
     stats:[],
     steps:null,
+    txsToExit:[],
     infoBox:null,
     polygonTxs:[],
     globalStats:[],
@@ -38,7 +42,9 @@ class PolygonBridge extends Component {
     contractApproved:false,
     tokenWrapperProps:null,
     distributionSpeed:null,
+    defaultTransaction:null,
     approveDescription:null,
+    selectedTransaction:null,
     balanceSelectorInfo:null,
     transactionSucceeded:null
   };
@@ -135,9 +141,28 @@ class PolygonBridge extends Component {
     };
   }
 
+  exitCallback(){
+
+  }
+
+  async getExitTransactionParams(){
+    const txHash = this.state.selectedTransaction;
+    const exitCalldata = await this.props.maticPOSClient.exitERC20(txHash, { from:this.props.account, encodeAbi: true })
+    if (exitCalldata && exitCalldata.data){
+      return exitCalldata.data;
+    }
+    return null;
+  }
+
   async contractApproved(contractApproved){
     this.setState({
       contractApproved
+    });
+  }
+
+  async selectTransaction(selectedTransaction){
+    this.setState({
+      selectedTransaction
     });
   }
 
@@ -176,8 +201,9 @@ class PolygonBridge extends Component {
         newState.approveDescription = `Approve the contract to deposit your ${this.state.selectedToken}`;
         newState.balanceProp = await this.functionsUtil.getTokenBalance(this.state.tokenConfig.rootToken.name,this.props.account);
         if (this.state.transactionSucceeded){
-          const depositedTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
-          const depositedTokens = depositedTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensLog.data,16),this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0);
+          const depositedTokensEvent = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events ? Object.values(this.state.transactionSucceeded.txReceipt.events).find( event => event.address.toLowerCase() === this.state.tokenConfig.rootToken.address.toLowerCase() && event.raw.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && event.raw.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && event.raw.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          const depositedTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.rootToken.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          const depositedTokens = depositedTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensLog.data,16),this.state.tokenConfig.decimals) : ( depositedTokensEvent ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensEvent.raw.data,16),this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0));
           newState.infoBox = {
             icon:'DoneAll',
             iconProps:{
@@ -224,8 +250,9 @@ class PolygonBridge extends Component {
           },
         ];
         if (this.state.transactionSucceeded){
-          const withdrawnTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
-          const withdrawnTokens = withdrawnTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(withdrawnTokensLog.data,16),this.state.tokenConfig.decimals) : (this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events && this.state.transactionSucceeded.txReceipt.events.Transfer ? this.functionsUtil.fixTokenDecimals(this.state.transactionSucceeded.txReceipt.events.Transfer.returnValues.value,this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0));
+          const withdrawnTokensEvent = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events ? Object.values(this.state.transactionSucceeded.txReceipt.events).find( event => event.address.toLowerCase() === this.state.tokenConfig.childToken.address.toLowerCase() && event.raw.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && event.raw.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && event.raw.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          const withdrawnTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.childToken.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          const withdrawnTokens = withdrawnTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(withdrawnTokensLog.data,16),this.state.tokenConfig.decimals) : (this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events && this.state.transactionSucceeded.txReceipt.events.Transfer ? this.functionsUtil.fixTokenDecimals(this.state.transactionSucceeded.txReceipt.events.Transfer.returnValues.value,this.state.tokenConfig.decimals) : ( withdrawnTokensEvent ? this.functionsUtil.fixTokenDecimals(parseInt(withdrawnTokensEvent.raw.data,16),this.state.tokenConfig.decimals)  : this.functionsUtil.BNify(0)));
           newState.infoBox = {
             icon:'DoneAll',
             iconProps:{
@@ -245,6 +272,17 @@ class PolygonBridge extends Component {
       break;
       case 'Exit':
         newState.availableNetworks = [1,5];
+        newState.txsToExit = this.state.polygonTxs.filter( tx => tx.included && !tx.exited && tx.token === this.state.selectedToken ).map( tx => {
+          const label = this.functionsUtil.strToMoment(tx.timeStamp*1000).format('DD-MM-YYYY HH:mm')+' - '+tx.value.toFixed(6)+' '+tx.token;
+          return {
+            label,
+            data:tx,
+            value:tx.hash
+          }
+        });
+
+        newState.defaultTransaction = newState.txsToExit.length>0 ? newState.txsToExit[0] : null;
+        newState.selectedTransaction = newState.defaultTransaction ? newState.defaultTransaction.data.hash : null;
       break;
       default:
       break;
@@ -277,9 +315,9 @@ class PolygonBridge extends Component {
       return output;
     },[]);
 
-    const selectedAction = 'Deposit';
-    const selectedOption = availableTokens[0];
-    const selectedToken = selectedOption.value;
+    const selectedToken = this.props.urlParams.param2 && this.props.toolProps.availableTokens[this.props.urlParams.param2] ? this.props.urlParams.param2 : (this.props.selectedToken || this.state.selectedToken || availableTokens[0].value);
+    const selectedOption = availableTokens.find( t => t.value === selectedToken );
+    const selectedAction = this.props.action || this.state.action || 'Deposit';
 
     this.setState({
       selectedToken,
@@ -287,6 +325,10 @@ class PolygonBridge extends Component {
       selectedAction,
       availableTokens
     });
+  }
+
+  async exitSelectedTransaction(){
+
   }
 
   selectToken(selectedToken){
@@ -302,7 +344,7 @@ class PolygonBridge extends Component {
   }
 
   render() {
-
+    const fullWidth = !!this.props.fullWidth;
     const isExit = this.state.selectedAction === 'Exit';
     const isDeposit = this.state.selectedAction === 'Deposit';
     const isWithdraw = this.state.selectedAction === 'Withdraw';
@@ -352,103 +394,119 @@ class PolygonBridge extends Component {
                   </Text>
                 ) : (
                   <Flex
-                    width={[1,0.36]}
                     alignItems={'stretch'}
                     flexDirection={'column'}
                     justifyContent={'center'}
+                    width={[1,fullWidth ? 1 : 0.36]}
                   >
-                    <Box
-                      width={1}
-                    >
-                      <Text
-                        mb={1}
-                      >
-                        Select Token:
-                      </Text>
-                      <AssetSelector
-                        id={'tokens'}
-                        {...this.props}
-                        showBalance={false}
-                        isSearchable={false}
-                        onChange={this.selectToken.bind(this)}
-                        selectedToken={this.state.selectedToken}
-                        availableTokens={this.props.toolProps.availableTokens}
-                      />
-                    </Box>
+                    {
+                      !this.props.selectedToken && (
+                        <Box
+                          width={1}
+                        >
+                          <Text
+                            mb={1}
+                          >
+                            Select Token:
+                          </Text>
+                          <AssetSelector
+                            id={'tokens'}
+                            {...this.props}
+                            showBalance={false}
+                            isSearchable={false}
+                            onChange={this.selectToken.bind(this)}
+                            selectedToken={this.state.selectedToken}
+                            availableTokens={this.props.toolProps.availableTokens}
+                          />
+                        </Box>
+                      )
+                    }
                     {
                       this.state.selectedToken && (
                         <Box
                           mt={2}
                           width={1}
                         >
-                          <Text
-                            mb={2}
-                          >
-                            Choose the action:
-                          </Text>
-                          <Flex
-                            mb={3}
-                            alignItems={'center'}
-                            flexDirection={'row'}
-                            justifyContent={'space-between'}
-                          >
-                            <CardIconButton
-                              {...this.props}
-                              cardProps={{
-                                px:3,
-                                py:2,
-                                width:0.325
-                              }}
-                              textProps={{
-                                fontWeight:2
-                              }}
-                              text={'Deposit'}
-                              iconColor={'deposit'}
-                              icon={'ArrowDownward'}
-                              iconBgColor={'#ced6ff'}
-                              handleClick={ e => this.setAction('Deposit') }
-                              isActive={ this.state.selectedAction === 'Deposit' }
-                            />
-                            <CardIconButton
-                              {...this.props}
-                              cardProps={{
-                                px:3,
-                                py:2,
-                                width:0.325
-                              }}
-                              textProps={{
-                                fontWeight:2
-                              }}
-                              text={'Withdraw'}
-                              iconColor={'redeem'}
-                              icon={'ArrowUpward'}
-                              iconBgColor={'#ceeff6'}
-                              handleClick={ e => this.setAction('Withdraw') }
-                              isActive={ this.state.selectedAction === 'Withdraw' }
-                            />
-                            <CardIconButton
-                              {...this.props}
-                              cardProps={{
-                                px:3,
-                                py:2,
-                                width:0.325
-                              }}
-                              textProps={{
-                                fontWeight:2
-                              }}
-                              text={'Exit'}
-                              icon={'SwapHoriz'}
-                              iconColor={'redeem'}
-                              iconBgColor={'#ceeff6'}
-                              handleClick={ e => this.setAction('Exit') }
-                              isActive={ this.state.selectedAction === 'Exit' }
-                            />
-                          </Flex>
+                          {
+                            !this.props.action && (
+                              <Box
+                                width={1}
+                              >
+                                <Text
+                                  mb={2}
+                                >
+                                  Choose the action:
+                                </Text>
+                                <Flex
+                                  mb={3}
+                                  alignItems={'center'}
+                                  flexDirection={'row'}
+                                  justifyContent={'space-between'}
+                                >
+                                  <CardIconButton
+                                    {...this.props}
+                                    cardProps={{
+                                      px:3,
+                                      py:2,
+                                      width:0.325
+                                    }}
+                                    textProps={{
+                                      fontWeight:2,
+                                      fontSize:[1,2]
+                                    }}
+                                    text={'Deposit'}
+                                    iconColor={'deposit'}
+                                    icon={'ArrowDownward'}
+                                    iconBgColor={'#ced6ff'}
+                                    handleClick={ e => this.setAction('Deposit') }
+                                    isActive={ this.state.selectedAction === 'Deposit' }
+                                  />
+                                  <CardIconButton
+                                    {...this.props}
+                                    cardProps={{
+                                      px:3,
+                                      py:2,
+                                      width:0.325
+                                    }}
+                                    textProps={{
+                                      fontWeight:2,
+                                      fontSize:[1,2]
+                                    }}
+                                    text={'Withdraw'}
+                                    iconColor={'redeem'}
+                                    icon={'ArrowUpward'}
+                                    iconBgColor={'#ceeff6'}
+                                    handleClick={ e => this.setAction('Withdraw') }
+                                    isActive={ this.state.selectedAction === 'Withdraw' }
+                                  />
+                                  <CardIconButton
+                                    {...this.props}
+                                    cardProps={{
+                                      px:3,
+                                      py:2,
+                                      width:0.325
+                                    }}
+                                    textProps={{
+                                      fontWeight:2,
+                                      fontSize:[1,2]
+                                    }}
+                                    text={'Exit'}
+                                    icon={'SwapHoriz'}
+                                    iconColor={'redeem'}
+                                    iconBgColor={'#ceeff6'}
+                                    handleClick={ e => this.setAction('Exit') }
+                                    isActive={ this.state.selectedAction === 'Exit' }
+                                  />
+                                </Flex>
+                              </Box>
+                            )
+                          }
                           {
                             !this.state.availableNetworks.includes(currentNetworkId) ? (
                               <DashboardCard
                                 cardProps={{
                                   p:3,
+                                  mb:3,
                                   width:1
                                 }}
                               >
@@ -529,7 +587,105 @@ class PolygonBridge extends Component {
                                       </DashboardCard>
                                     </SendTxWithBalance>
                                   ) : isExit && (
-                                    <Box></Box>
+                                    <Box
+                                      width={1}
+                                    >
+                                      {
+                                        this.state.txsToExit.length ? (
+                                          <Box
+                                            width={1}
+                                          >
+                                            <Text mb={1}>
+                                              Select Transaction:
+                                            </Text>
+                                            <GenericSelector
+                                              {...this.props}
+                                              isSearchable={false}
+                                              name={'transactions'}
+                                              options={this.state.txsToExit}
+                                              onChange={this.selectTransaction.bind(this)}
+                                              defaultValue={this.state.defaultTransaction}
+                                            />
+                                            {
+                                              this.state.selectedTransaction && (
+                                                <ExecuteTransaction
+                                                  action={'Exit'}
+                                                  Component={RoundButton}
+                                                  parentProps={{
+                                                    mt:3,
+                                                    alignItems:'center',
+                                                    justifyContent:'center'
+                                                  }}
+                                                  componentProps={{
+                                                    buttonProps:{
+                                                      value:'Exit',
+                                                      width:[1,1/3],
+                                                      size:'medium',
+                                                      mainColor:'redeem'
+                                                    },
+                                                    value:'Exit Transaction',
+                                                  }}
+                                                  params={[]}
+                                                  methodName={'exit'}
+                                                  sendRawTransaction={true}
+                                                  contractName={'RootChainManager'}
+                                                  callback={this.exitCallback.bind(this)}
+                                                  getTransactionParamsAsync={this.getExitTransactionParams.bind(this)}
+                                                  {...this.props}
+                                                >
+                                                  <Flex
+                                                    flexDirection={'row'}
+                                                    alignItems={'center'}
+                                                    justifyContent={'center'}
+                                                  >
+                                                    <Icon
+                                                      mr={1}
+                                                      name={'Done'}
+                                                      size={'1.4em'}
+                                                      color={this.props.theme.colors.transactions.status.completed}
+                                                    />
+                                                    <Text
+                                                      fontWeight={500}
+                                                      fontSize={'15px'}
+                                                      color={'copyColor'}
+                                                      textAlign={'center'}
+                                                    >
+                                                      Transaction successfully exited!
+                                                    </Text>
+                                                  </Flex>
+                                                </ExecuteTransaction>
+                                              )
+                                            }
+                                          </Box>
+                                        ) : (
+                                          <DashboardCard
+                                            cardProps={{
+                                              p:3,
+                                              width:1
+                                            }}
+                                          >
+                                            <Flex
+                                              alignItems={'center'}
+                                              flexDirection={'column'}
+                                            >
+                                              <Icon
+                                                size={'1.8em'}
+                                                name={'Warning'}
+                                                color={'cellText'}
+                                              />
+                                              <Text
+                                                mt={1}
+                                                fontSize={2}
+                                                color={'cellText'}
+                                                textAlign={'center'}
+                                              >
+                                                You cannot exit any transaction yet.
+                                              </Text>
+                                            </Flex>
+                                          </DashboardCard>
+                                        )
+                                      }
+                                    </Box>
                                   )
                                 }
                               </Box>

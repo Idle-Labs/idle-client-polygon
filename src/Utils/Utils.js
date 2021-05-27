@@ -28,9 +28,9 @@ class Utils extends Component {
   }
 
   render() {
-    const SubComponent = this.props.selectedSubsection && this.props.selectedSubsection.subComponent ? this.props.selectedSubsection.subComponent : null;
     const viewOnly = this.props.connectorName === 'custom';
     const showBreadCrumb = typeof this.props.showBreadCrumb !== 'undefined' ? this.props.showBreadCrumb : true;
+    const SubComponent = this.props.selectedSubsection && this.props.selectedSubsection.subComponent ? this.props.selectedSubsection.subComponent : null;
     return (
       <Flex
         width={1}
