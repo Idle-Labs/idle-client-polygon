@@ -259,12 +259,14 @@ class StrategyPage extends Component {
 
   render(){
     const viewOnly = this.props.connectorName === 'custom';
+    const currentNetworkId = this.functionsUtil.getCurrentNetworkId();
     const govTokens = this.functionsUtil.getGlobalConfig(['govTokens']);
     const apyLong = this.functionsUtil.getGlobalConfig(['messages','apyLong']);
     const riskScore = this.functionsUtil.getGlobalConfig(['messages','riskScore']);
     const yieldFarming = this.functionsUtil.getGlobalConfig(['messages','yieldFarming']);
     const batchDepositConfig = this.functionsUtil.getGlobalConfig(['tools','batchDeposit']);
     const coverProtocolConfig = this.functionsUtil.getGlobalConfig(['tools','coverProtocol']);
+    const enabledGovTokens = Object.keys(govTokens).filter( govToken => govTokens[govToken].enabled && (!govTokens[govToken].availableNetworks || govTokens[govToken].availableNetworks.includes(currentNetworkId)) );
 
     return (
       <Box
@@ -1492,7 +1494,7 @@ class StrategyPage extends Component {
                 )
               }
               {
-                this.state.depositedTokens.length>0 &&
+                this.state.depositedTokens.length>0 && enabledGovTokens.length>0 &&
                   <Flex
                     width={1}
                     id={"yield-farming"}
@@ -1500,7 +1502,7 @@ class StrategyPage extends Component {
                   >
                     <Title my={[3,4]}>Yield Farming</Title>
                     <AssetsList
-                      enabledTokens={Object.keys(govTokens).filter( govToken => govTokens[govToken].enabled )}
+                      enabledTokens={enabledGovTokens}
                       cols={[
                         {
                           title:'TOKEN',

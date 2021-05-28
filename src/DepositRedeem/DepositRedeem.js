@@ -1401,9 +1401,9 @@ class DepositRedeem extends Component {
 
     const polygonBridgeInfo = this.functionsUtil.getGlobalConfig(['tools','polygonBridge']);
     // const PolygonBridgeComponent = polygonBridgeInfo.subComponent;
-    // const polygonNetworkId = this.functionsUtil.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetwork.id]);
+    const polygonNetworkId = this.functionsUtil.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetwork.id]);
     // const polygonNetwork = this.functionsUtil.getGlobalConfig(['network','availableNetworks',polygonNetworkId]);
-    // const showPolygonBridge = currentNetwork.provider === 'infura' && polygonNetworkId && polygonBridgeInfo.enabled && this.state.action === 'deposit';
+    const showPolygonBridgeBanner = currentNetwork.provider === 'polygon' && polygonNetworkId && polygonBridgeInfo.enabled && this.state.action === 'deposit';
 
     const canPerformAction = /*!depositCurve && !this.state.redeemCurveEnabled && */((this.state.action === 'deposit' && this.state.canDeposit) || (this.state.action === 'redeem' && this.state.canRedeem) || redeemGovTokens) && (!this.state.showETHWrapperEnabled || this.state.action === 'redeem') && (!this.state.showPolygonBridgeEnabled || this.state.action === 'redeem');
     const showActionFlow = !redeemGovTokens && canPerformAction;
@@ -2416,7 +2416,7 @@ class DepositRedeem extends Component {
                                 name={'LocalGasStation'}
                               />
                             </Flex>
-                          ) : showETHWrapper && (
+                          ) : showETHWrapper ? (
                             <Flex
                               width={1}
                               alignItems={'center'}
@@ -2457,49 +2457,44 @@ class DepositRedeem extends Component {
                                   />
                               }
                             </Flex>
-                          )/* : showPolygonBridge && (
+                          ) : showPolygonBridgeBanner && (
                             <Flex
+                              p={2}
+                              mt={3}
                               width={1}
+                              borderRadius={2}
                               alignItems={'center'}
                               flexDirection={'column'}
                               justifyContent={'center'}
+                              backgroundColor={'DashboardCard'}
+                              border={`1px solid ${this.props.theme.colors.primary}`}
                             >
-                              <DashboardCard
-                                cardProps={{
-                                  py:3,
-                                  px:2,
-                                  mt:3,
-                                  display:'flex',
-                                  alignItems:'center',
-                                  flexDirection:'column',
-                                  justifyContent:'center',
-                                  pb:this.state.showAdvancedOptions ? 3 : 2,
-                                }}
+                              <Image
+                                height={'1.2em'}
+                                src={polygonBridgeInfo.image}
+                              />
+                              <Flex
+                                width={1}
+                                alignItems={'center'}
+                                flexDirection={'row'}
+                                justifyContent={'center'}
                               >
-                                <Flex
-                                  alignItems={'center'}
-                                  justifyContent={'row'}
+                                <Link
+                                  textAlign={'center'}
+                                  hoverColor={'primary'}
+                                  href={`/#/dashboard/tools/${polygonBridgeInfo.route}/${this.props.selectedToken}`}
                                 >
-                                  <Checkbox
-                                    required={false}
-                                    label={`Deposit to Polygon network`}
-                                    checked={this.state.showPolygonBridgeEnabled}
-                                    onChange={ e => this.toggleShowPolygonBridge(e.target.checked) }
-                                  />
-                                </Flex>
-                              </DashboardCard>
-                              {
-                                this.state.showPolygonBridgeEnabled && 
-                                  <PolygonBridgeComponent
-                                    {...this.props}
-                                    fullWidth={true}
-                                    action={'Deposit'}
-                                    toolProps={polygonBridgeInfo.props}
-                                    selectedToken={this.props.selectedToken}
-                                  />
-                              }
+                                  Use the {polygonBridgeInfo.label} to deposit more {this.props.selectedToken}
+                                </Link>
+                                <Icon
+                                  ml={1}
+                                  size={'1em'}
+                                  color={'primary'}
+                                  name={'ArrowForward'}
+                                />
+                              </Flex>
                             </Flex>
-                          )*/
+                          )
                         }
                         {
                           showRedeemCurve && this.state.canRedeem && (

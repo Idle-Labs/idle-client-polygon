@@ -163,6 +163,7 @@ class AccountModal extends React.Component {
       });
 
       const showTools = ['addFunds','tokenSwap'];
+      const currentNetworkId = this.functionsUtil.getCurrentNetworkId();
 
       return (
         <Modal isOpen={this.props.isOpen}>
@@ -229,21 +230,25 @@ class AccountModal extends React.Component {
                         {
                           showTools.map( toolName => {
                             const toolConfig = this.functionsUtil.getGlobalConfig(['tools',toolName]);
-                            return (
-                              <CardIconButton
-                                {...this.props}
-                                key={`tool_${toolName}`}
-                                cardProps={{
-                                  mx:[0,2],
-                                  my:[2,0],
-                                  width:'auto',
-                                  minWidth:['50%','auto']
-                                }}
-                                icon={toolConfig.icon}
-                                text={toolConfig.label}
-                                handleClick={ e => this.goToSection(`tools/${toolConfig.route}`) }
-                              />
-                            )
+                            if (toolConfig.enabled && (!toolConfig.availableNetworks || toolConfig.availableNetworks.includes(currentNetworkId))){
+                              return (
+                                <CardIconButton
+                                  {...this.props}
+                                  key={`tool_${toolName}`}
+                                  cardProps={{
+                                    mx:[0,2],
+                                    my:[2,0],
+                                    width:'auto',
+                                    minWidth:['50%','auto']
+                                  }}
+                                  icon={toolConfig.icon}
+                                  text={toolConfig.label}
+                                  handleClick={ e => this.goToSection(`tools/${toolConfig.route}`) }
+                                />
+                              );
+                            } else {
+                              return null;
+                            }
                           })
                         }
                       </Flex>

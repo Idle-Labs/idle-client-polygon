@@ -57,7 +57,7 @@ class Dashboard extends Component {
 
     const strategies = this.functionsUtil.getGlobalConfig(['strategies']);
     const baseRoute = this.functionsUtil.getGlobalConfig(['dashboard','baseRoute']);
-    const menu = Object.keys(strategies).filter( s => ( !strategies[s].comingSoon ) ).map(strategy => ({
+    const menu = Object.keys(strategies).filter( s => ( !strategies[s].comingSoon && (!strategies[s].availableNetworks || strategies[s].availableNetworks.includes(currentNetworkId)) ) ).map( strategy => ({
         submenu:[],
         color:'#fff',
         selected:false,
@@ -86,7 +86,7 @@ class Dashboard extends Component {
 
     // Add Stake
     const stakeConfig = this.functionsUtil.getGlobalConfig(['tools','stake']);
-    if (stakeConfig.enabled){
+    if (stakeConfig.enabled && (!stakeConfig.availableNetworks || stakeConfig.availableNetworks.includes(currentNetworkId))){
       menu.push(
         {
           submenu:[],
@@ -123,18 +123,21 @@ class Dashboard extends Component {
     // console.log(currentNetworkId,menu);
 
     // Add Stats
-    menu.push(
-      {
-        icon:'Equalizer',
-        label:'Stats',
-        bgColor:'#21f36b',
-        color:'dark-gray',
-        component:Stats,
-        selected:false,
-        route:'/dashboard/stats',
-        submenu:[]
-      }
-    );
+    const statsInfo = this.functionsUtil.getGlobalConfig(['stats']);
+    if (!statsInfo.availableNetworks || statsInfo.availableNetworks.includes(currentNetworkId)){
+      menu.push(
+        {
+          icon:'Equalizer',
+          label:'Stats',
+          bgColor:'#21f36b',
+          color:'dark-gray',
+          component:Stats,
+          selected:false,
+          route:'/dashboard/stats',
+          submenu:[]
+        }
+      );
+    }
 
     // Add Forum
     menu.push(

@@ -5,6 +5,7 @@ import USDC from '../abis/tokens/USDC.json';
 import WETH from '../abis/tokens/WETH.json';
 import COMP from '../abis/compound/COMP.json';
 import aToken from '../abis/aave/AToken.json';
+import ERC20 from '../abis/tokens/ERC20.json';
 import TokenSwap from '../TokenSwap/TokenSwap';
 import yDAIv3 from '../abis/iearn/yDAIv3.json';
 import yUSDCv3 from '../abis/iearn/yUSDCv3.json';
@@ -385,6 +386,7 @@ const globalConfigs = {
       distributionMode:'block',
       distributionFrequency:'day', // Multiply distribution per block
       color:'hsl(162, 100%, 41%)',
+      availableNetworks:[1,42,1337],
       icon:'images/tokens/IDLE.png',
       disabledTokens:['idleRAIYield'], // Disable IDLE distribution for idleToken
       address:'0x875773784Af8135eA0ef43b5a374AaD105c5D39e' // MAIN
@@ -406,6 +408,7 @@ const globalConfigs = {
       distributionMode:'block',
       distributionFrequency:'day',
       color:'hsl(162, 100%, 41%)',
+      availableNetworks:[1,42,1337],
       address:'0xc00e94cb662c3520282e6f5717214004a7f26888', // MAIN
       // address:'0x61460874a7196d6a22d1ee4922473664b3e95270' // KOVAN
     },
@@ -423,9 +426,30 @@ const globalConfigs = {
       distributionMode:'second',
       color:'hsl(314, 41%, 51%)',
       distributionFrequency:'day',
+      availableNetworks:[1,42,1337],
       disabledTokens:['idleTUSDYield','idleSUSDYield'],
       address:'0x4da27a545c0c5b758a6ba100e3a049001de870f5', // MAIN
       addressForPrice:'0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', // MAIN
+    },
+    WMATIC:{
+      abi:ERC20,
+      decimals:18,
+      showAUM:true, // Include stkAAVE balance in AUM
+      showAPR:true, // Include stkAAVE Apr
+      enabled:true,
+      token:'WMATIC',
+      showPrice:true,
+      showBalance:true, // Include stkAAVE balance in Portfolio Donut
+      protocol:'aavev2',
+      disabledTokens:[],
+      aprTooltipMode:false,
+      distributionMode:'second',
+      color:'hsl(314, 41%, 51%)',
+      distributionFrequency:'day',
+      availableNetworks:[137,80001],
+      address:'0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', // Mumbai
+      // addressForPrice:'0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0'
+      // address:'0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', // Polygon
     }
   },
   contracts:{
@@ -534,6 +558,7 @@ const globalConfigs = {
       govTokensEnabled:true,
       component: StrategyPage,
       chartColor:'hsl(40,95%,59%)',
+      availableNetworks:[1,5,42,137,80001],
       icon:'images/strategies/best-on.svg',
       iconInactive:'images/strategies/best-off.svg',
       iconInactiveDark:'images/strategies/best-white.svg',
@@ -551,6 +576,7 @@ const globalConfigs = {
       title:'Risk-Adjusted',
       govTokensEnabled:true,
       component: StrategyPage,
+      availableNetworks:[1,42],
       chartColor:'hsl(211,67%,47%)',
       icon:'images/strategies/risk-on.svg',
       iconInactive:'images/strategies/risk-off.svg',
@@ -566,6 +592,7 @@ const globalConfigs = {
       addGovTokens:true,
       iconName:'Adjust',
       title:'Coming Soon',
+      availableNetworks:[1,42],
       chartColor:'hsl(211,67%,47%)',
       icon:'images/strategies/solr-on.svg',
       desc:'More strategies are coming soon!',
@@ -576,6 +603,7 @@ const globalConfigs = {
   },
   stats:{
     enabled:true, // Enable endpoint
+    availableNetworks:[1,42],
     rates:{
       TTL:300, // 5 minutes
       endpoint:'https://api.idle.finance/rates/'
