@@ -151,6 +151,52 @@ const availableTokens = {
       
     }
   },
+  137:{ // Matic Mainnet
+    best:{
+      DAI:{
+        abi:DAI,
+        token:'DAI',
+        decimals:18,
+        enabled:true,
+        govTokensDisabled:false,
+        color:'hsl(40, 95%, 59%)',
+        address:'0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+        deposit:{
+          minAmountForMint:10000,
+        },
+        wyre:{
+          destCurrency:'DAI'
+        },
+        ramp:{
+          swapAsset:'DAI'
+        },
+        defiPrime:{
+          token:'dai'
+        },
+        idle:{
+          abi:IdleTokenV4,
+          token:'idleDAIYield',
+          address:'0x8a999F5A3546F8243205b2c0eCb0627cC10003ab',
+        },
+        protocols:[
+          {
+            abi:aToken,
+            name:'aavev2',
+            enabled:true,
+            token:'amDAI',
+            address:'0x27F8D03b3a2196956ED754baDc28D73be8830A6e',
+            decimals:18,
+            functions:{
+
+            }
+          },
+        ]
+      },
+    },
+    risk:{
+      
+    }
+  },
   // Ethereum
   42:{
     best:{

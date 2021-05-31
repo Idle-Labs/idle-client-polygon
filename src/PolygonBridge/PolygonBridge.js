@@ -86,10 +86,12 @@ class PolygonBridge extends Component {
       const childTokenConfig = tokenConfig.childToken;
 
       // Init contracts
-      await Promise.all([
-        this.props.initContract(rootTokenConfig.name,rootTokenConfig.address,rootTokenConfig.abi),
-        this.props.initContract(childTokenConfig.name,childTokenConfig.address,childTokenConfig.abi)
-      ]);
+      if (rootTokenConfig && childTokenConfig){
+        await Promise.all([
+          this.props.initContract(rootTokenConfig.name,rootTokenConfig.address,rootTokenConfig.abi),
+          this.props.initContract(childTokenConfig.name,childTokenConfig.address,childTokenConfig.abi)
+        ]);
+      }
 
       this.setState({
         tokenConfig
@@ -115,16 +117,27 @@ class PolygonBridge extends Component {
   }
 
   getTransactionParams(amount){
+    let value = null;
     let methodName = null;
     let methodParams = [];
     let contractName = null;
     amount = this.functionsUtil.toBN(amount);
     switch (this.state.selectedAction){
       case 'Deposit':
-        methodName = 'depositFor';
-        contractName = 'RootChainManager';
-        const depositData = this.props.web3.eth.abi.encodeParameter('uint256', amount);
-        methodParams = [this.props.account,this.state.tokenConfig.rootToken.address,depositData];
+        switch (this.state.selectedToken){
+          case 'ETH':
+            methodName = 'depositEtherFor';
+            contractName = 'RootChainManager';
+            value = this.props.web3.eth.abi.encodeParameter('uint256', amount);
+            methodParams = [this.props.account];
+          break;
+          default:
+            methodName = 'depositFor';
+            contractName = 'RootChainManager';
+            const depositData = this.props.web3.eth.abi.encodeParameter('uint256', amount);
+            methodParams = [this.props.account,this.state.tokenConfig.rootToken.address,depositData];
+          break;
+        }
       break;
       case 'Withdraw':
         methodName = 'withdraw';
@@ -134,7 +147,16 @@ class PolygonBridge extends Component {
       default:
       break;
     }
+
+    // console.log('getTransactionParams',{
+    //   value,
+    //   methodName,
+    //   methodParams,
+    //   contractName
+    // });
+
     return {
+      value,
       methodName,
       methodParams,
       contractName
@@ -191,25 +213,34 @@ class PolygonBridge extends Component {
 
   async updateData(selectedActionChanged=false){
     const newState = {};
+    const isETH = this.state.selectedToken==='ETH';
     switch (this.state.selectedAction){
       case 'Deposit':
         newState.steps = [];
         newState.permitEnabled = false;
-        newState.approveEnabled = true;
         newState.availableNetworks = [1,5];
+        newState.approveEnabled = !isETH;
         newState.contractInfo = this.props.toolProps.contracts.ERC20Predicate;
         newState.approveDescription = `Approve the contract to deposit your ${this.state.selectedToken}`;
-        newState.balanceProp = await this.functionsUtil.getTokenBalance(this.state.tokenConfig.rootToken.name,this.props.account);
+        newState.balanceProp = isETH ? await this.functionsUtil.getETHBalance(this.props.account) : await this.functionsUtil.getTokenBalance(this.state.tokenConfig.rootToken.name,this.props.account);
         if (this.state.transactionSucceeded){
-          const depositedTokensEvent = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events ? Object.values(this.state.transactionSucceeded.txReceipt.events).find( event => event.address.toLowerCase() === this.state.tokenConfig.rootToken.address.toLowerCase() && event.raw.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && event.raw.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && event.raw.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
-          const depositedTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.rootToken.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          let depositedTokensLog = null;
+          let depositedTokensEvent = null;
+          if (!isETH){
+            depositedTokensEvent = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events ? Object.values(this.state.transactionSucceeded.txReceipt.events).find( event => event.address.toLowerCase() === this.state.tokenConfig.rootToken.address.toLowerCase() && event.raw.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && event.raw.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && event.raw.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+            depositedTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.state.tokenConfig.rootToken.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.state.contractInfo.address.replace('0x','').toLowerCase()) ) && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          } else {
+            depositedTokensEvent = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.events ? Object.values(this.state.transactionSucceeded.txReceipt.events).find( event => event.address.toLowerCase() === this.props.toolProps.contracts.EtherPredicate.address.toLowerCase() && event.raw.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && event.raw.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+            depositedTokensLog = this.state.transactionSucceeded.txReceipt && this.state.transactionSucceeded.txReceipt.logs ? this.state.transactionSucceeded.txReceipt.logs.find( log => log.address.toLowerCase() === this.props.toolProps.contracts.EtherPredicate.address.toLowerCase() && log.topics.find( t => t.toLowerCase().includes(this.props.account.replace('0x','').toLowerCase()) ) && log.data.toLowerCase()!=='0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'.toLowerCase() ) : null;
+          }
           const depositedTokens = depositedTokensLog ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensLog.data,16),this.state.tokenConfig.decimals) : ( depositedTokensEvent ? this.functionsUtil.fixTokenDecimals(parseInt(depositedTokensEvent.raw.data,16),this.state.tokenConfig.decimals) : this.functionsUtil.BNify(0));
+          debugger;
           newState.infoBox = {
             icon:'DoneAll',
             iconProps:{
               color:this.props.theme.colors.transactions.status.completed
             },
-            text:`You have successfully deposited <strong>${depositedTokens.toFixed(4)} ${this.state.selectedToken}</strong> in the Polygon chain. Please wait up to 10 minutes for your balance to be reflected in the Polygon chain.`
+            text:`You have successfully deposited <strong>${depositedTokens.toFixed(4)} ${this.state.selectedToken}</strong> in the Polygon chain. Please wait up to 10 minutes for your balance to be accounted in the Polygon chain.`
           }
         } else {
           newState.infoBox = {
@@ -217,7 +248,7 @@ class PolygonBridge extends Component {
             iconProps:{
               color:'cellText'
             },
-            text:`Please note that deposits require up to 10 minutes to be reflected in the Polygon chain.`
+            text:`Please note that deposit of funds takes ~7-8 minutes to be accounted in the Polygon chain.`
           }
         }
       break;
@@ -348,7 +379,8 @@ class PolygonBridge extends Component {
     const isExit = this.state.selectedAction === 'Exit';
     const isDeposit = this.state.selectedAction === 'Deposit';
     const isWithdraw = this.state.selectedAction === 'Withdraw';
-    const currentNetworkId = this.functionsUtil.getCurrentNetworkId();
+    const currentNetwork = this.functionsUtil.getCurrentNetwork();
+    const currentNetworkId = currentNetwork.id;
 
     return (
       <Flex
@@ -525,7 +557,7 @@ class PolygonBridge extends Component {
                                     color={'cellText'}
                                     textAlign={'center'}
                                   >
-                                    The <strong>{this.functionsUtil.capitalize(this.props.network.current.name)} network</strong> is not supported for this function, please switch to <strong>{this.state.availableNetworks.map( networkId => this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'name']) ).join(' or ')} network</strong>.
+                                    The <strong>{this.functionsUtil.capitalize(currentNetwork.name)} network</strong> is not supported for this function, please switch to <strong>{this.functionsUtil.getGlobalConfig(['network','availableNetworks',this.functionsUtil.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetworkId]),'name'])} network</strong>.
                                   </Text>
                                 </Flex>
                               </DashboardCard>

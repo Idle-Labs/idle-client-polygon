@@ -1403,13 +1403,13 @@ class DepositRedeem extends Component {
     // const PolygonBridgeComponent = polygonBridgeInfo.subComponent;
     const polygonNetworkId = this.functionsUtil.getGlobalConfig(['network','providers','polygon','networkPairs',currentNetwork.id]);
     // const polygonNetwork = this.functionsUtil.getGlobalConfig(['network','availableNetworks',polygonNetworkId]);
-    const showPolygonBridgeBanner = currentNetwork.provider === 'polygon' && polygonNetworkId && polygonBridgeInfo.enabled && this.state.action === 'deposit';
 
     const canPerformAction = /*!depositCurve && !this.state.redeemCurveEnabled && */((this.state.action === 'deposit' && this.state.canDeposit) || (this.state.action === 'redeem' && this.state.canRedeem) || redeemGovTokens) && (!this.state.showETHWrapperEnabled || this.state.action === 'redeem') && (!this.state.showPolygonBridgeEnabled || this.state.action === 'redeem');
     const showActionFlow = !redeemGovTokens && canPerformAction;
 
     const showBuyFlow = this.state.componentMounted && currentNetwork.provider === 'infura' && (!showDepositCurve || this.state.showBuyFlow) && !this.state.depositCurveEnabled && this.state.tokenApproved && !this.state.contractPaused && (!this.state.migrationEnabled || this.state.skipMigration) && this.state.action === 'deposit' && !this.state.canDeposit && !this.state.showETHWrapperEnabled;
     const showPolygonBridge = this.state.componentMounted && this.state.action === 'deposit' && !this.state.canDeposit && currentNetwork.provider === 'polygon';
+    const showPolygonBridgeBanner = !showPolygonBridge && currentNetwork.provider === 'polygon' && polygonNetworkId && polygonBridgeInfo.enabled && this.state.action === 'deposit';
 
     const buyToken = this.functionsUtil.BNify(this.props.accountBalance).gt(0) ? this.props.selectedToken : this.functionsUtil.getBaseToken();
 
@@ -3102,7 +3102,7 @@ class DepositRedeem extends Component {
                     color={'cellText'}
                     textAlign={'center'}
                   >
-                    Use the Polygon PoS Bridge to deposit your {this.props.selectedToken} in the Polygon blockchain.
+                    Use the {polygonBridgeInfo.label} to deposit your {this.props.selectedToken} in the Polygon blockchain.
                   </Text>
                   <RoundButton
                     buttonProps={{

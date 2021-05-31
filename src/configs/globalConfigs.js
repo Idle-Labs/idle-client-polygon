@@ -56,6 +56,7 @@ import SushiV2Router02 from '../abis/sushiswap/SushiV2Router02.json';
 import IdleBatchConverter from '../contracts/IdleBatchConverter.json';
 import ChildChainManager from '../abis/polygon/ChildChainManager.json';
 import UniswapV2Router02 from '../abis/uniswap/UniswapV2Router02.json';
+import ProtocolDataProvider from '../abis/aave/ProtocolDataProvider.json';
 import IdleDepositForwarder from '../contracts/IdleDepositForwarder.json';
 import SushiLiquidityPool from '../abis/sushiswap/SushiLiquidityPool.json';
 import BalancerExchangeProxy from '../abis/balancer/BalancerExchangeProxy.json';
@@ -453,75 +454,83 @@ const globalConfigs = {
     }
   },
   contracts:{
-    RootChainManager:{
-      abi:RootChainManager,
-      address:'0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74' // Goerli
-      // address:'0xD4888faB8bd39A663B63161F5eE1Eae31a25B653' // Mainnet
+    137:{
+      ProtocolDataProvider:{
+        abi:ProtocolDataProvider,
+        address:'0x7551b5D2763519d4e37e8B81929D336De671d46d'
+      },
+      ChildChainManager:{
+        abi:ChildChainManager,
+        // address:'0x2e5e27d50EFa501D90Ad3638ff8441a0C0C0d75e' // Mumbai
+        address:'0xA6FA4fB5f76172d178d61B04b0ecd319C5d1C0aa' // Matic
+      },
     },
-    ChildChainManager:{
-      abi:ChildChainManager,
-      address:'0x2e5e27d50EFa501D90Ad3638ff8441a0C0C0d75e' // Mumbai
-      // address:'0x195fe6EE6639665CCeB15BCCeB9980FC445DFa0B' // Matic
-    },
-    LockedIDLE:{
-      abi:LockedIDLE,
-      address:'0xF241a0151841AE2E6ea750D50C5794b5EDC31D99'
-    },
-    FeeTreasury:{
-      abi:FeeTreasury,
-      address:'0x69a62c24f16d4914a48919613e8ee330641bcb94' // MAIN
-    },
-    PriceOracle:{
-      abi:PriceOracle,
-      address:'0x972A64d108e250dF98dbeac8170678501f5EF181' // MAIN
-      // address:'0xCab5760688db837Bb453FE1DFBC5eDeE6fa8F0FF' // KOVAN
-    },
-    Timelock:{
-      abi:Timelock,
-      address:'0xD6dABBc2b275114a2366555d6C481EF08FDC2556' // MAIN
-      // address:'0xfD88D7E737a06Aa9c62B950C1cB5eE63DA379AFd' // KOVAN
-    },
-    EcosystemFund:{
-      abi:EcosystemFund,
-      address:'0xb0aA1f98523Ec15932dd5fAAC5d86e57115571C7' // MAIN
-      // address:'0x125d3D6A8e546BD13802c309429CBB4db5737d57' // KOVAN
-    },
-    VesterFactory:{
-      abi:VesterFactory,
-      address:'0xbF875f2C6e4Cc1688dfe4ECf79583193B6089972' // MAIN
-      // address:'0x9b52f91578c8AfA8e2DF07d4D7726bB6b73Ec1FE' // KOVAN
-    },
-    IdleController:{
-      abi:IdleController,
-      address:'0x275DA8e61ea8E02d51EDd8d0DC5c0E62b4CDB0BE' // MAIN
-      // address:'0x8Ad5F0644b17208c81bA5BDBe689c9bcc7143d87' // KOVAN
-    },
-    EarlyRewards:{
-        abi:EarlyRewards,
-        address:'0xa1F71ED24ABA6c8Da8ca8C046bBc9804625d88Fc' // MAIN
-        // address:'0x07A94A60B54c6b2Da19e23D6E9123180Bf92ED40' // KOVAN
-    },
-    GovernorAlpha:{
-      abi:GovernorAlpha,
-      address:'0x2256b25CFC8E35c3135664FD03E77595042fe31B' // MAIN
-      // address:'0x782cB1dbd0bD4df95c2497819be3984EeA5c2c25' // KOVAN
-    },
-    Comptroller:{
-      abi:Comptroller,
-      address:'0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b', // Main
-      // address:'0x5eae89dc1c671724a672ff0630122ee834098657' // Kovan
-    },
-    SushiswapRouter:{
-      abi:SushiV2Router02,
-      address:'0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F'
-    },
-    UniswapRouter:{
-      abi:UniswapV2Router02,
-      address:'0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
-    },
-    BalancerExchangeProxy:{
-      abi:BalancerExchangeProxy,
-      address:'0x3E66B66Fd1d0b02fDa6C811Da9E0547970DB2f21'
+    1:{
+      RootChainManager:{
+        abi:RootChainManager,
+        // address:'0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74' // Goerli
+        address:'0xA0c68C638235ee32657e8f720a23ceC1bFc77C77' // Mainnet
+      },
+      LockedIDLE:{
+        abi:LockedIDLE,
+        address:'0xF241a0151841AE2E6ea750D50C5794b5EDC31D99'
+      },
+      FeeTreasury:{
+        abi:FeeTreasury,
+        address:'0x69a62c24f16d4914a48919613e8ee330641bcb94' // MAIN
+      },
+      PriceOracle:{
+        abi:PriceOracle,
+        address:'0x972A64d108e250dF98dbeac8170678501f5EF181' // MAIN
+        // address:'0xCab5760688db837Bb453FE1DFBC5eDeE6fa8F0FF' // KOVAN
+      },
+      Timelock:{
+        abi:Timelock,
+        address:'0xD6dABBc2b275114a2366555d6C481EF08FDC2556' // MAIN
+        // address:'0xfD88D7E737a06Aa9c62B950C1cB5eE63DA379AFd' // KOVAN
+      },
+      EcosystemFund:{
+        abi:EcosystemFund,
+        address:'0xb0aA1f98523Ec15932dd5fAAC5d86e57115571C7' // MAIN
+        // address:'0x125d3D6A8e546BD13802c309429CBB4db5737d57' // KOVAN
+      },
+      VesterFactory:{
+        abi:VesterFactory,
+        address:'0xbF875f2C6e4Cc1688dfe4ECf79583193B6089972' // MAIN
+        // address:'0x9b52f91578c8AfA8e2DF07d4D7726bB6b73Ec1FE' // KOVAN
+      },
+      IdleController:{
+        abi:IdleController,
+        address:'0x275DA8e61ea8E02d51EDd8d0DC5c0E62b4CDB0BE' // MAIN
+        // address:'0x8Ad5F0644b17208c81bA5BDBe689c9bcc7143d87' // KOVAN
+      },
+      EarlyRewards:{
+          abi:EarlyRewards,
+          address:'0xa1F71ED24ABA6c8Da8ca8C046bBc9804625d88Fc' // MAIN
+          // address:'0x07A94A60B54c6b2Da19e23D6E9123180Bf92ED40' // KOVAN
+      },
+      GovernorAlpha:{
+        abi:GovernorAlpha,
+        address:'0x2256b25CFC8E35c3135664FD03E77595042fe31B' // MAIN
+        // address:'0x782cB1dbd0bD4df95c2497819be3984EeA5c2c25' // KOVAN
+      },
+      Comptroller:{
+        abi:Comptroller,
+        address:'0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b', // Main
+        // address:'0x5eae89dc1c671724a672ff0630122ee834098657' // Kovan
+      },
+      SushiswapRouter:{
+        abi:SushiV2Router02,
+        address:'0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F'
+      },
+      UniswapRouter:{
+        abi:UniswapV2Router02,
+        address:'0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+      },
+      BalancerExchangeProxy:{
+        abi:BalancerExchangeProxy,
+        address:'0x3E66B66Fd1d0b02fDa6C811Da9E0547970DB2f21'
+      }
     }
   },
   tokens:{
@@ -690,6 +699,11 @@ const globalConfigs = {
         startTimestamp:'2020-02-11',
         address:'0x6b175474e89094c44da98b954eedeac495271d0f',
         performanceTooltip:'APR is calculated proportionally to historical allocations of each lending protocol in the selected time period. This pool has 1% unlent reserve to help reduce gas costs.',
+      },
+      MATIC:{
+        decimals:18,
+        enabled:true,
+        address:'0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0'
       },
       USD:{
         enabled:true,
@@ -1266,11 +1280,18 @@ const globalConfigs = {
           ERC20Predicate:{
             abi:null,
             name:'ERC20Predicate',
-            address:'0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34', // Goerli
-            // address:'0x886e02327cAd4E1E29688C7Db0c9d28879ac44Da' // Mainnet
+            // address:'0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34', // Goerli
+            address:'0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf' // Mainnet
+          },
+          EtherPredicate:{
+            abi:null,
+            name:'EtherPredicate',
+            // address:'0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34', // Goerli
+            address:'0x8484Ef722627bf18ca5Ae6BcF031c23E6e922B30' // Mainnet
           }
         },
         availableTokens:{
+          /*
           DERC20:{
             decimals:18,
             enabled:true,
@@ -1287,6 +1308,36 @@ const globalConfigs = {
               address:'0xfe4F5145f6e09952a5ba9e956ED0C25e3Fa4c7F1' // Mumbai
             }
           },
+          */
+          /*
+          MATIC:{
+            name:'MATIC',
+            token:'MATIC',
+            decimals:18,
+            enabled:true,
+            rootToken:{
+              abi:ERC20,
+              name:'MATIC',
+              address:'0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0', // Mainnet
+            },
+            childToken:{
+              abi:ChildERC20,
+              name:'childMATIC',
+              address:'0x0000000000000000000000000000000000001010' // Matic
+            }
+          },
+          */
+          ETH:{
+            name:'ETH',
+            token:'ETH',
+            decimals:18,
+            enabled:true,
+            childToken:{
+              abi:ChildERC20,
+              name:'MaticWETH',
+              address:'0x8cc8538d60901d19692F5ba22684732Bc28F54A3' // Matic
+            }
+          },
           DAI:{
             name:'DAI',
             token:'DAI',
@@ -1295,16 +1346,17 @@ const globalConfigs = {
             rootToken:{
               abi:DAI,
               name:'DAI',
-              address:'0x6311344B50D2077BF9804d376EA4C2cEDcB75C1f', // Goerli
-              // address:'0x6b175474e89094c44da98b954eedeac495271d0f', // Mainnet
+              // address:'0x6311344B50D2077BF9804d376EA4C2cEDcB75C1f', // Goerli
+              address:'0x6b175474e89094c44da98b954eedeac495271d0f', // Mainnet
             },
             childToken:{
               abi:ChildERC20,
               name:'childDAI',
-              address:'0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F', // Mumbai
-              // address:'0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063' // Matic
+              // address:'0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F', // Mumbai
+              address:'0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063' // Matic
             }
           },
+          /*
           USDC:{
             decimals:6,
             name:'USDC',
@@ -1323,6 +1375,7 @@ const globalConfigs = {
               // address:'0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' // Matic
             }
           }
+          */
         }
       }
     },
