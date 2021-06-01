@@ -1,7 +1,7 @@
 import Staking from '../Staking/Staking';
 import DAI from '../abis/tokens/DAI.json';
 import IDLE from '../contracts/IDLE.json';
-import USDC from '../abis/tokens/USDC.json';
+// import USDC from '../abis/tokens/USDC.json';
 import WETH from '../abis/tokens/WETH.json';
 import COMP from '../abis/compound/COMP.json';
 import aToken from '../abis/aave/AToken.json';
@@ -32,7 +32,7 @@ import BuyModal from '../utilities/components/BuyModal';
 import IdleTokenV3 from '../contracts/IdleTokenV3.json';
 import BatchDeposit from '../BatchDeposit/BatchDeposit';
 import ChildERC20 from '../abis/polygon/ChildERC20.json';
-import DummyERC20 from '../abis/polygon/DummyERC20.json';
+// import DummyERC20 from '../abis/polygon/DummyERC20.json';
 import EarlyRewards from '../contracts/EarlyRewards.json';
 import PolygonBridge from '../PolygonBridge/PolygonBridge';
 import CoverProtocol from '../CoverProtocol/CoverProtocol';
@@ -448,9 +448,9 @@ const globalConfigs = {
       color:'hsl(314, 41%, 51%)',
       distributionFrequency:'day',
       availableNetworks:[137,80001],
-      address:'0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', // Mumbai
-      // addressForPrice:'0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0'
-      // address:'0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', // Polygon
+      // address:'0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', // Mumbai
+      address:'0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', // Polygon
+      addressForPrice:'0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0' // Mainnet
     }
   },
   contracts:{
@@ -463,6 +463,11 @@ const globalConfigs = {
         abi:ChildChainManager,
         // address:'0x2e5e27d50EFa501D90Ad3638ff8441a0C0C0d75e' // Mumbai
         address:'0xA6FA4fB5f76172d178d61B04b0ecd319C5d1C0aa' // Matic
+      },
+      UniswapRouter:{
+        abi:UniswapV2Router02,
+        useInfuraProvider:true,
+        address:'0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
       },
     },
     1:{
@@ -1171,6 +1176,7 @@ const globalConfigs = {
       },
       covalent:{
         enabled:true,
+        key:env.REACT_APP_COVALENT_KEY,
         endpoints:{
           137:'https://api.covalenthq.com/v1/137/',
           80001:'https://api.covalenthq.com/v1/80001/'
@@ -1178,6 +1184,7 @@ const globalConfigs = {
       },
       etherscan:{
         enabled:true, // False for empty txs list (try new wallet)
+        key:env.REACT_APP_ETHERSCAN_KEY,
         endpoints:{
           1: 'https://api.etherscan.io/api',
           1337: 'https://api.etherscan.io/api',
@@ -1327,6 +1334,7 @@ const globalConfigs = {
             }
           },
           */
+          /*
           ETH:{
             name:'ETH',
             token:'ETH',
@@ -1338,6 +1346,7 @@ const globalConfigs = {
               address:'0x8cc8538d60901d19692F5ba22684732Bc28F54A3' // Matic
             }
           },
+          */
           DAI:{
             name:'DAI',
             token:'DAI',

@@ -2484,7 +2484,7 @@ class DepositRedeem extends Component {
                                   hoverColor={'primary'}
                                   href={`/#/dashboard/tools/${polygonBridgeInfo.route}/${this.props.selectedToken}`}
                                 >
-                                  Use the {polygonBridgeInfo.label} to deposit more {this.props.selectedToken}
+                                  Use the {polygonBridgeInfo.label} to deposit your {this.props.selectedToken}
                                 </Link>
                                 <Icon
                                   ml={1}

@@ -636,6 +636,7 @@ class App extends Component {
                         simpleID,
                         biconomy,
                         contracts,
+                        web3Infura,
                         web3Polygon,
                         transaction,
                         initAccount,
@@ -691,6 +692,7 @@ class App extends Component {
                                       isMobile={isMobile}
                                       simpleID={simpleID}
                                       contracts={contracts}
+                                      web3Infura={web3Infura}
                                       web3Polygon={web3Polygon}
                                       initAccount={initAccount}
                                       checkNetwork={checkNetwork}
@@ -773,6 +775,8 @@ class App extends Component {
                                           simpleID={simpleID}
                                           isGovernance={true}
                                           contracts={contracts}
+                                          web3Infura={web3Infura}
+                                          web3Polygon={web3Polygon}
                                           initAccount={initAccount}
                                           initSimpleID={initSimpleID}
                                           initContract={initContract}
