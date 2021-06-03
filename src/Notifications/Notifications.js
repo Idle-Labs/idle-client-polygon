@@ -83,9 +83,16 @@ class Notifications extends Component {
   async loadNotifications(){
 
     // Get stored lastOpenTimestamp for notifications
+    const currentNetwork = this.functionsUtil.getCurrentNetwork();
+    const governanceConfig = this.functionsUtil.getGlobalConfig(['governance']);
+    const batchDepositConfig = this.functionsUtil.getGlobalConfig(['tools','batchDeposit']);
     const polygonBridgeConfig = this.functionsUtil.getGlobalConfig(['tools','polygonBridge']);
     const notificationsParams = this.functionsUtil.getStoredItem('notificationsParams',true,{});
     const lastOpenTimestamp = notificationsParams.lastOpenTimestamp || null;
+
+    const governanceEnabled = governanceConfig.enabled && governanceConfig.availableNetworks.includes(currentNetwork.id);
+    const polygonBridgeEnabled = polygonBridgeConfig.enabled && polygonBridgeConfig.availableNetworks.includes(currentNetwork.id);
+    const batchedDepositsEnabled = batchDepositConfig.enabled && batchDepositConfig.availableNetworks.includes(currentNetwork.id);
 
     // Get active snapshot proposals
     const [
@@ -97,9 +104,9 @@ class Notifications extends Component {
     ] = await Promise.all([
       this.functionsUtil.getSubstackLatestFeed(),
       this.functionsUtil.getSnapshotProposals(true),
-      this.governanceUtil.getProposals(null,'Active'),
-      polygonBridgeConfig.enabled ? this.functionsUtil.getPolygonBridgeTxs(this.props.account) : null,
-      this.functionsUtil.getBatchedDeposits(this.props.account,'executed')
+      governanceEnabled ? this.governanceUtil.getProposals(null,'Active') : null,
+      polygonBridgeEnabled ? this.functionsUtil.getPolygonBridgeTxs(this.props.account) : null,
+      batchedDepositsEnabled ? this.functionsUtil.getBatchedDeposits(this.props.account,'executed') : null
     ]);
 
     let notifications = this.functionsUtil.getGlobalConfig(['notifications']).filter( n => (n.enabled && n.start<=currTime && n.end>currTime) );
@@ -161,7 +168,6 @@ class Notifications extends Component {
 
     // Add Executed Batch Deposits
     if (batchedDeposits){
-      const batchDepositConfig = this.functionsUtil.getGlobalConfig(['tools','batchDeposit']);
       const batchDepositBaseUrl = this.functionsUtil.getGlobalConfig(['dashboard','baseRoute'])+`/tools/${batchDepositConfig.route}/`;
       Object.keys(batchedDeposits).forEach( batchToken => {
         const batchInfo = batchedDeposits[batchToken];

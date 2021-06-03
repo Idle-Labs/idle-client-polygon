@@ -6,8 +6,8 @@ import NetworkUtil from "./NetworkUtil";
 import { Biconomy } from "@biconomy/mexa";
 import * as Sentry from '@sentry/browser';
 import FunctionsUtil from './FunctionsUtil';
+import MaticJs from '@maticnetwork/maticjs';
 import globalConfigs from '../configs/globalConfigs';
-import { MaticPOSClient } from '@maticnetwork/maticjs';
 import ConnectionModalUtil from "./ConnectionModalsUtil";
 import detectEthereumProvider from '@metamask/detect-provider';
 import ConnectionErrorModal from './components/ConnectionErrorModal';
@@ -30,6 +30,7 @@ const RimbleTransactionContext = React.createContext({
   accountBalance: {},
   initWeb3: () => {},
   accountValidated: {},
+  maticPlasmaClient :{},
   initAccount: () => {},
   accountBalanceLow: {},
   checkNetwork: () => {},
@@ -421,6 +422,7 @@ class RimbleTransaction extends React.Component {
 
     let web3Polygon = null;
     let maticPOSClient = null;
+    let maticPlasmaClient = null;
 
     // const infuraConfig = globalConfigs.network.providers.infura;
     const polygonConfig = globalConfigs.network.providers.polygon;
@@ -432,8 +434,13 @@ class RimbleTransaction extends React.Component {
       const web3PolygonRpc = polygonConfig.rpc[polygonNetworkId]+this.functionsUtil.getGlobalConfig(['network','providers','polygon','key']);
       web3Polygon = new Web3(new Web3.providers.HttpProvider(web3PolygonRpc));
 
-      const maticProvider = networkConfig.provider==='polygon' ? web3 : new Web3(new Web3.providers.HttpProvider(web3PolygonRpc));
-      const parentProvider = networkConfig.provider==='infura' ? web3 : new Web3(new Web3.providers.HttpProvider(web3InfuraRpc));
+      // const maticProvider = networkConfig.provider==='polygon' ? web3 : new Web3(new Web3.providers.HttpProvider(web3PolygonRpc));
+      // const parentProvider = networkConfig.provider==='infura' ? web3 : new Web3(new Web3.providers.HttpProvider(web3InfuraRpc));
+      const maticProvider = web3PolygonRpc;
+      const parentProvider = web3InfuraRpc;
+
+      // console.log('maticProvider',web3PolygonRpc);
+      // console.log('parentProvider',web3InfuraRpc);
 
       const maticPOSClientConfig = {
         maticProvider,
@@ -441,12 +448,22 @@ class RimbleTransaction extends React.Component {
         network: networkConfig.network,
         version: networkConfig.version
       };
+      maticPOSClient = new MaticJs.MaticPOSClient(maticPOSClientConfig);
 
-      maticPOSClient = new MaticPOSClient(maticPOSClientConfig);
+      // console.log('maticPOSClientConfig',networkConfig,maticPOSClientConfig);
+
+      const maticPlasmaClientConfig = {
+        maticProvider,
+        parentProvider,
+        network: networkConfig.network,
+        version: networkConfig.version
+      };
+      maticPlasmaClient = new MaticJs(maticPlasmaClientConfig);
     }
 
     window.web3Polygon = web3Polygon;
     window.maticPOSClient = maticPOSClient;
+    window.maticPlasmaClient = maticPlasmaClient;
 
     const web3Callback = async () => {
 
@@ -540,6 +557,7 @@ class RimbleTransaction extends React.Component {
               web3Polygon,
               permitClient,
               maticPOSClient,
+              maticPlasmaClient,
               erc20ForwarderClient
             };
             // console.log('biconomy',newState);
@@ -557,7 +575,8 @@ class RimbleTransaction extends React.Component {
                 web3Infura,
                 web3Polygon,
                 maticPOSClient,
-                biconomy:false
+                biconomy:false,
+                maticPlasmaClient
               }, web3Callback);
             }
           });
@@ -567,7 +586,8 @@ class RimbleTransaction extends React.Component {
             web3Infura,
             web3Polygon,
             maticPOSClient,
-            biconomy:false
+            biconomy:false,
+            maticPlasmaClient
           }, web3Callback);
         }
       }
@@ -577,7 +597,8 @@ class RimbleTransaction extends React.Component {
           web3,
           web3Infura,
           web3Polygon,
-          maticPOSClient
+          maticPOSClient,
+          maticPlasmaClient
         }, web3Callback);
       } else if (context.account || forceCallback){
         web3Callback();
@@ -680,6 +701,7 @@ class RimbleTransaction extends React.Component {
     try {
       if (!account){
         const wallets = await this.state.web3.eth.getAccounts();
+        console.log('wallets',wallets);
         if (wallets && wallets.length){
           account = wallets[0];
         }
@@ -996,6 +1018,8 @@ class RimbleTransaction extends React.Component {
         this.getTokenDecimals()
       ]);
 
+      // console.log('getAccountBalance',parseFloat(accountBalance));
+
       if (accountBalance) {
 
         // Convert to wei if decimals found
@@ -1241,21 +1265,6 @@ class RimbleTransaction extends React.Component {
       id:networkId,
       name:networkName
     }
-    /*
-    try {
-      return this.state.web3.eth.net.getId(async (error, networkId) => {
-        let current = { ...this.state.network.current };
-        current.id = networkId;
-        current.name = this.functionsUtil.getGlobalConfig(['network','availableNetworks',networkId,'name']) || await this.state.web3.eth.net.getNetworkType();
-        let network = {...this.state.network};
-        network.current = current;
-        network.isCorrectNetwork = globalConfigs.network.enabledNetworks.includes(networkId);
-        this.setState({ network });
-      });
-    } catch (error) {
-      this.functionsUtil.customLog("Could not get network ID: ", error);
-    }
-    */
   }
 
   getNetworkName = async () => {
@@ -1280,12 +1289,14 @@ class RimbleTransaction extends React.Component {
     network.isCorrectNetwork = !network.current.id || globalConfigs.network.enabledNetworks.includes(network.current.id);
     const networkInitialized = !!network.current.id;
 
-    console.log('checkNetwork',network);
 
-    this.setState({
-      network,
-      networkInitialized
-    });
+    if (!this.state.network.current.id || network.current.id !== this.state.network.current.id || !this.state.networkInitialized){
+      // console.log('checkNetwork',network);
+      this.setState({
+        network,
+        networkInitialized
+      });
+    }
   }
 
   contractMethodSendWrapper = async (contractName, contractMethod, params = [], value = null, callback = null, callback_receipt = null, gasLimit = null, txData = null, send_raw=false, raw_tx_data=null) => {
@@ -1856,6 +1867,7 @@ class RimbleTransaction extends React.Component {
     accountBalance: null,
     web3Subscription: null,
     accountValidated: null,
+    maticPlasmaClient:null,
     accountBalanceDAI: null,
     initWeb3: this.initWeb3,
     accountBalanceLow: null,

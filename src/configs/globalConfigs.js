@@ -49,6 +49,7 @@ import BatchMigration from '../BatchMigration/BatchMigration';
 import IdleBatchedMint from '../contracts/IdleBatchedMint.json';
 import { RampInstantSDK } from '@ramp-network/ramp-instant-sdk';
 import IdleProxyMinter from '../contracts/IdleProxyMinter.json';
+import DepositManager from '../abis/polygon/DepositManager.json';
 import IdleRebalancerV3 from '../contracts/IdleRebalancerV3.json';
 import LiquidityGaugeV2 from '../abis/curve/LiquidityGaugeV2.json';
 import RootChainManager from '../abis/polygon/RootChainManager.json';
@@ -220,6 +221,7 @@ const globalConfigs = {
     test:false,
     enabled:true,
     startBlock:11333729,
+    availableNetworks:[1],
     baseRoute:'/governance',
     props:{
       tokenName:'IDLE',
@@ -471,6 +473,10 @@ const globalConfigs = {
       },
     },
     1:{
+      DepositManager:{
+        abi:DepositManager,
+        address:'0x401f6c983ea34274ec46f84d70b31c151321188b'
+      },
       RootChainManager:{
         abi:RootChainManager,
         // address:'0xBbD7cBFA79faee899Eaf900F13C9065bF03B1A74' // Goerli
@@ -1082,9 +1088,11 @@ const globalConfigs = {
   network:{ // Network configurations
     availableNetworks:{
       1:{
+        version:'v1',
         name:'Mainnet',
         baseToken:'ETH',
         provider:'infura',
+        network:'mainnet',
         explorer:'etherscan'
       },
       42:{
@@ -1116,6 +1124,8 @@ const globalConfigs = {
       5:{
         name:'Goerli',
         baseToken:'ETH',
+        version:'mumbai',
+        network:'testnet',
         provider:'infura',
         explorer:'etherscan'
       },
@@ -1157,6 +1167,7 @@ const globalConfigs = {
       polygon:{
         enabled:true,
         key:env.REACT_APP_POLYGON_KEY,
+        // key:env.REACT_APP_INFURA_KEY,
         baseUrl:{
           137:'https://explorer-mainnet.maticvigil.com',
           80001:'https://explorer-mumbai.maticvigil.com'
@@ -1172,6 +1183,8 @@ const globalConfigs = {
           5:'https://rpc-mumbai.maticvigil.com/v1/',
           137:'https://rpc-mainnet.maticvigil.com/v1/',
           80001:'https://rpc-mumbai.maticvigil.com/v1/'
+          // 1:'https://polygon-mainnet.infura.io/',
+          // 137:'https://polygon-mainnet.infura.io/'
         }
       },
       covalent:{
@@ -1277,9 +1290,9 @@ const globalConfigs = {
     polygonBridge:{
       enabled:true,
       route:'polygon-bridge',
-      label:'Polygon PoS Bridge',
       subComponent:PolygonBridge,
       availableNetworks:[1,5,137,80001],
+      label:'Ethereum <> Polygon Bridge',
       image:'images/protocols/polygon.svg',
       desc:'Deposit and Withdraw your tokens from Polygon network with PoS Bridge.',
       props:{
@@ -1295,6 +1308,14 @@ const globalConfigs = {
             name:'EtherPredicate',
             // address:'0xdD6596F2029e6233DEFfaCa316e6A95217d4Dc34', // Goerli
             address:'0x8484Ef722627bf18ca5Ae6BcF031c23E6e922B30' // Mainnet
+          },
+          DepositManager:{
+            name:'DepositManager',
+            address:'0x401f6c983ea34274ec46f84d70b31c151321188b'
+          },
+          StateSender:{
+            name:'StateSender',
+            address:'0x28e4F3a7f651294B9564800b2D01f35189A5bFbE'
           }
         },
         availableTokens:{
@@ -1316,12 +1337,13 @@ const globalConfigs = {
             }
           },
           */
-          /*
           MATIC:{
             name:'MATIC',
             token:'MATIC',
             decimals:18,
             enabled:true,
+            sendValue:true,
+            bridgeType:'plasma',
             rootToken:{
               abi:ERC20,
               name:'MATIC',
@@ -1333,7 +1355,6 @@ const globalConfigs = {
               address:'0x0000000000000000000000000000000000001010' // Matic
             }
           },
-          */
           /*
           ETH:{
             name:'ETH',
@@ -1352,6 +1373,8 @@ const globalConfigs = {
             token:'DAI',
             decimals:18,
             enabled:true,
+            sendValue:false,
+            bridgeType:'pos',
             rootToken:{
               abi:DAI,
               name:'DAI',
