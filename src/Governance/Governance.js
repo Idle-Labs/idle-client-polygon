@@ -163,6 +163,16 @@ class Dashboard extends Component {
   }
 
   async loadParams() {
+
+    if (!this.props.networkInitialized){
+      return false;
+    }
+
+    const governanceEnabled = this.checkEnabled();
+    if (!governanceEnabled){
+      return false;
+    }
+
     const { match: { params } } = this.props;
 
     const baseRoute = this.state.baseRoute;
@@ -245,14 +255,6 @@ class Dashboard extends Component {
   async componentWillMount() {
     this.props.setCurrentSection('governance');
     this.loadUtils();
-
-    // const governanceEnabled = this.functionsUtil.getGlobalConfig(['governance','enabled']);
-    // if (!governanceEnabled){
-    //   this.goToSection('/',false);
-    // }
-
-    await this.loadMenu();
-    this.loadParams();
   }
 
   async componentDidMount() {
@@ -264,20 +266,31 @@ class Dashboard extends Component {
       }
     },20000);
 
-    /*
     if (!this.props.web3){
       return this.props.initWeb3();
+    } else if (!this.props.networkInitialized){
+      return this.props.checkNetwork();
     } else if (!this.props.accountInizialized){
       return this.props.initAccount();
     } else if (!this.props.contractsInitialized){
       return this.props.initializeContracts();
     }
-    */
 
     this.loadUtils();
     await this.loadMenu();
     this.loadParams();
     this.loadData();
+  }
+
+  checkEnabled(){
+    const currentNetwork = this.functionsUtil.getCurrentNetwork();
+    const governanceConfig = this.functionsUtil.getGlobalConfig(['governance']);
+    const governanceEnabled = governanceConfig.enabled && governanceConfig.availableNetworks.includes(currentNetwork.id);
+    console.log('governanceEnabled',currentNetwork,governanceEnabled);
+    if (!governanceEnabled){
+      this.goToSection('/',false);
+    }
+    return governanceEnabled;
   }
 
   async componentDidUpdate(prevProps,prevState) {
@@ -293,6 +306,12 @@ class Dashboard extends Component {
       }, () => {
         this.loadParams();
       });
+    }
+
+    const networkInitialized = !prevProps.networkInitialized && this.props.networkInitialized;
+    if (networkInitialized){
+      await this.loadMenu();
+      this.loadParams();
     }
 
     const accountChanged = prevProps.account !== this.props.account;
@@ -326,9 +345,16 @@ class Dashboard extends Component {
 
   async loadData(){
 
-    if (!this.props.web3 || !this.props.contractsInitialized){
+    if (!this.props.web3 || !this.props.contractsInitialized || !this.props.networkInitialized){
       return false;
     }
+
+    const governanceEnabled = this.checkEnabled();
+    if (!governanceEnabled){
+      return false;
+    }
+
+    console.log('Governance - loadData');
 
     const newState = {};
     const [

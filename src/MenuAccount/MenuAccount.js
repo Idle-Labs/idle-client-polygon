@@ -80,8 +80,11 @@ class MenuAccount extends Component {
     const connectorInfo = walletProvider ? this.functionsUtil.getGlobalConfig(['connectors',walletProvider.toLowerCase()]) : null;
     const walletIcon = connectorInfo && connectorInfo.icon ? connectorInfo.icon : walletProvider ? `${walletProvider.toLowerCase()}.svg` : null;
 
-    const governanceRoute = this.functionsUtil.getGlobalConfig(['governance','baseRoute']);
-    const governanceEnabled = this.functionsUtil.getGlobalConfig(['governance','enabled']);
+    const currentNetwork = this.functionsUtil.getCurrentNetwork();
+    const governanceConfig = this.functionsUtil.getGlobalConfig(['governance']);
+    
+    const governanceRoute = governanceConfig.baseRoute;
+    const governanceEnabled = governanceConfig.enabled && governanceConfig.availableNetworks.includes(currentNetwork.id);
     const dashboardRoute = this.functionsUtil.getGlobalConfig(['dashboard','baseRoute'])+'/'+Object.keys(this.props.availableStrategies)[0];
 
     return (

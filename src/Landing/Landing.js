@@ -277,6 +277,10 @@ class Landing extends Component {
         }
       });
     });
+
+    const currentNetworkId = this.functionsUtil.getCurrentNetworkId();
+    const availableStrategies = Object.keys(globalConfigs.strategies).filter( strategy => globalConfigs.strategies[strategy].availableNetworks.includes(currentNetworkId) );
+
     return (
       <Box
         height={'100vh'}
@@ -392,7 +396,7 @@ class Landing extends Component {
                     flexDirection={'row'}
                     position={'absolute'}
                     id={'carousel-cursor'}
-                    width={[Object.keys(globalConfigs.strategies).length*100+'%','140%']}
+                    width={[availableStrategies.length*100+'%','140%']}
                     height={['auto','400px']}
                     bottom={['5px','initial']}
                     justifyContent={'flex-start'}
@@ -403,7 +407,7 @@ class Landing extends Component {
                     }}
                   >
                     {
-                      Object.keys(globalConfigs.strategies).map((strategy,strategyIndex) => (
+                      availableStrategies.map((strategy,strategyIndex) => (
                         <StrategyBox
                           {...this.props}
                           strategy={strategy}
