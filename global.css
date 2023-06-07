@@ -1,0 +1,49 @@
+:root {
+  --background-color: #1B1E27; 
+  --text-color: #ffffff; 
+  -- border-color: #555B67;
+  --accent-background: #202A3E;
+  --accent-color: #0C48A4; 
+  --accent-color-hover: #EFF1FC; 
+  --secondary-text-color: #cdd0d6;
+  --divider-color: #555B67;
+  --item-hover: #323D53;
+
+  --onboard-shadow-2: var(--divider-color) 0px -1px 0px 0px inset;
+
+  --onboard-close-button-color: var(--text-color);
+  --onboard-close-button-background: transparent;
+
+  --onboard-connect-sidebar-background: var(--accent-background);
+  --onboard-connect-sidebar-color: var(--text-color);
+  --onboard-connect-sidebar-progress-background: var(--secondary-text-color);
+  --onboard-connect-sidebar-progress-color: var(--accent-color);
+
+  --onboard-connect-header-background: var(--background-color);
+  --onboard-connect-header-color: var(--text-color);
+  --onboard-main-scroll-container-background: var(--background-color);
+  --onboard-link-color: var(--accent-color);
+
+  --onboard-wallet-app-icon-background-light-gray: var(--text-color);
+  --onboard-wallet-app-icon-background-transparent: var(--text-color);
+  --onboard-wallet-button-color: var(--secondary-text-color);
+  --onboard-wallet-button-background: var(--background-color);
+  --onboard-wallet-button-background-hover: var(--accent-color-hover);
+  --onboard-wallet-button-border-color: var(--border-color);
+  --onboard-wallet-app-icon-border-color: var(--border-color);
+  --onboard-wallet-button-background-hover: var(--item-hover);
+
+  --onboard-modal-z-index: 999999;
+}
+
+.link{
+  color:#6AE4FF;
+  text-decoration: none;
+}
+.link:hover{
+  text-decoration: underline;
+}
+.error{
+  color:#ffffff;
+  font-weight:bold;
+}

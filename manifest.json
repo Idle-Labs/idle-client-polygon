@@ -1,17 +1,20 @@
 {
-  "short_name": "Idle",
-  "name": "Idle",
-  "description": "Earn the yield you deserve without worry about finding the best option, either if you want to optimize returns or risks.",
-  "iconPath":"images/idle-mark.png",
+  "short_name": "Idle Finance",
+  "name": "Idle Finance - The Yield Automation Protocol",
   "icons": [
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#0b12d4",
   "background_color": "#ffffff"
 }
