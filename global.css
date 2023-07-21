@@ -1,4 +1,5 @@
 :root {
+  /*
   --background-color: #1B1E27; 
   --text-color: #ffffff; 
   -- border-color: #555B67;
@@ -32,8 +33,9 @@
   --onboard-wallet-button-border-color: var(--border-color);
   --onboard-wallet-app-icon-border-color: var(--border-color);
   --onboard-wallet-button-background-hover: var(--item-hover);
+  */
 
-  --onboard-modal-z-index: 999999;
+  /*--onboard-modal-z-index: 999999;*/
 }
 
 .link{

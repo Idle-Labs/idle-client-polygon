@@ -1,1 +1,0 @@
-(self.webpackChunkidle_dashboard_new=self.webpackChunkidle_dashboard_new||[]).push([[2480],{42480:function(){}}]);
