@@ -45,6 +45,14 @@
 .link:hover{
   text-decoration: underline;
 }
+.linkDark{
+  color:#555B67 !important;
+  text-decoration: none;
+}
+.linkDark:hover{
+  color:#ffffff !important;
+  text-decoration: underline;
+}
 .error{
   color:#ffffff;
   font-weight:bold;
