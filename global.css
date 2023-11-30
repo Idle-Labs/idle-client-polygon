@@ -42,6 +42,13 @@
   color:#6AE4FF;
   text-decoration: none;
 }
+.linkStatic{
+  color:#6AE4FF;
+  text-decoration: none !important;
+}
+.bold{
+  font-weight: 700;
+}
 .link:hover{
   text-decoration: underline;
 }
