@@ -38,6 +38,12 @@
   /*--onboard-modal-z-index: 999999;*/
 }
 
+
+table.bordered,
+table.bordered *{
+  border-width: 1px !important;
+  border-color: #555B67 !important;
+}
 .link{
   color:#6AE4FF;
   text-decoration: none;
